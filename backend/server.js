@@ -706,4 +706,78 @@ io.on('connection', (socket) => {
 
   socket.on('message:read', ({ chatId, messageId, userId }) => {
     if (!chatId || !messageId || !userId) return;
-    const chat = chats.find(c => c.id === chatId
+    const chat = chats.find(c => c.id === chatId);
+    if (chat && Array.isArray(chat.messages)) {
+      const msg = chat.messages.find(m => m.id === messageId);
+      if (msg) {
+        if (!msg.readBy) msg.readBy = {};
+        msg.readBy[userId] = Date.now();
+        persist();
+      }
+    }
+    socket.to(chatId).emit('message:read', { chatId, messageId, userId, time: Date.now() });
+  });
+
+  socket.on('message:viewed', ({ chatId, messageId }) => {
+    if (!chatId || !messageId) return;
+    const chat = chats.find(c => c.id === chatId);
+    if (chat && chat.type === 'channel' && chat.messages) {
+      const msg = chat.messages.find(m => m.id === messageId);
+      if (msg) {
+        msg.views = (msg.views || 0) + 1;
+        chat.updatedAt = Date.now();
+        persist();
+        socket.to(chatId).emit('message:viewed', { chatId, messageId, views: msg.views });
+      }
+    }
+  });
+
+  socket.on('channel:subscribe', ({ channelId, userId }) => {
+    if (!channelId || !userId) return;
+    const channel = chats.find(c => c.id === channelId && c.type === 'channel');
+    if (!channel) return;
+    if (!channel.channelMeta) channel.channelMeta = { admins: [], subscribers: [], linkedGroupId: null, avatar: null, login: null, isPublic: false };
+    if (!channel.channelMeta.subscribers.includes(userId)) {
+      channel.channelMeta.subscribers.push(userId);
+      if (!channel.members.includes(userId)) channel.members.push(userId);
+      persist();
+      io.emit('chat:updated', channel);
+    }
+  });
+  socket.on('channel:unsubscribe', ({ channelId, userId }) => {
+    if (!channelId || !userId) return;
+    const channel = chats.find(c => c.id === channelId && c.type === 'channel');
+    if (!channel) return;
+    if (channel.channelMeta && channel.channelMeta.subscribers) {
+      channel.channelMeta.subscribers = channel.channelMeta.subscribers.filter(u => u !== userId);
+      channel.members = channel.members.filter(u => u !== userId);
+      persist();
+      io.emit('chat:updated', channel);
+    }
+  });
+
+  socket.on('user:online', ({ userId }) => {
+    socket.broadcast.emit('user:online', { userId });
+    socket.broadcast.emit('user:heartbeat', { userId });
+  });
+  socket.on('user:offline', ({ userId }) => { socket.broadcast.emit('user:offline', { userId }); });
+  socket.on('disconnect', (reason) => { log(`WS disconnect: ${socket.id} (${reason})`); });
+});
+
+// ============================================================
+// ЗАПУСК
+// ============================================================
+loadData();
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, '0.0.0.0', () => {
+  log('========================================');
+  log(`  Mzgram server запущен на порту ${PORT}`);
+  log(`  HTML: ${HTML_FILE}`);
+  log(`  Данные: ${DATA_FILE}`);
+  log(`  Медиа: ${MEDIA_DIR}`);
+  log('========================================');
+});
+
+process.on('SIGINT', () => { persist(); process.exit(0); });
+process.on('SIGTERM', () => { persist(); process.exit(0); });
