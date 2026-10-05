@@ -1,0 +1,7 @@
+node_modules/
+mzgram.log
+data.json
+server-media/
+*.log
+.env
+.DS_Store
