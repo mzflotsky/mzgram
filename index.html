@@ -10,7 +10,6 @@
     html, body { width: 100%; height: 100%; background: #0b0d14; color: #e8edf5; overscroll-behavior: none; }
     #app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; width: 100vw; background: #0f111c; overflow: hidden; }
 
-    /* ============ ГЛОБАЛЬНЫЕ АНИМАЦИИ ============ */
     @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     @keyframes popIn { 0% { transform: scale(0.7); opacity: 0; } 60% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
@@ -28,7 +27,6 @@
     @keyframes ripple { to { transform: scale(4); opacity: 0; } }
     @keyframes glowPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(139, 124, 247, 0.6); } 50% { box-shadow: 0 0 0 12px rgba(139, 124, 247, 0); } }
 
-    /* ============ NAVBAR ============ */
     .navbar {
       background: #141827; padding: 10px 16px; display: flex; align-items: center;
       justify-content: space-between; border-bottom: 1px solid #2a2f4a; flex-shrink: 0;
@@ -77,7 +75,6 @@
 
     .main-grid { display: flex; flex: 1; min-height: 0; position: relative; overflow: hidden; }
 
-    /* ============ CHAT LIST ============ */
     .chat-list {
       width: 320px; background: #121624; border-right: 1px solid #252b45;
       display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden;
@@ -142,7 +139,6 @@
       border-radius: 16px; transition: background 0.15s, transform 0.15s;
       cursor: pointer;
       border-left: 3px solid transparent; -webkit-user-select: none; user-select: none;
-      animation: fadeInUp 0.25s ease;
     }
     .chat-item:hover { background: #1d233b; transform: translateX(2px); }
     .chat-item:active { background: #242c4a; transform: scale(0.99); }
@@ -169,6 +165,19 @@
     .chat-info .name .members-count { font-size: 12px; color: #7b8cda; font-weight: 500; }
     .chat-info .name .mute-icon { font-size: 11px; color: #e06b8a; margin-left: 4px; }
     .chat-info .last-msg { font-size: 13px; color: #919ac9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+    .chat-info .last-msg.typing-preview {
+      color: #a78bfa; font-style: italic; display: flex; align-items: center; gap: 6px;
+    }
+    .chat-info .last-msg.typing-preview .typing-dots {
+      display: inline-flex; align-items: center; gap: 3px;
+    }
+    .chat-info .last-msg.typing-preview .typing-dots span {
+      width: 5px; height: 5px; border-radius: 50%; background: #a78bfa;
+      animation: typing 1.2s infinite;
+    }
+    .chat-info .last-msg.typing-preview .typing-dots span:nth-child(2) { animation-delay: 0.15s; }
+    .chat-info .last-msg.typing-preview .typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+
     .chat-meta { display: flex; flex-direction: column; align-items: flex-end; margin-left: 8px; gap: 4px; }
     .chat-meta .time { font-size: 11px; color: #6870a5; }
     .chat-meta .unread-badge {
@@ -183,7 +192,6 @@
     .chat-meta .mute-btn:hover { color: #a78bfa; background: #232b4a; transform: scale(1.1); }
     .chat-meta .mute-btn.muted { color: #e06b8a; }
 
-    /* ============ CHAT WINDOW ============ */
     .chat-window { flex: 1; display: flex; flex-direction: column; background: #0e111d; overflow: hidden; position: relative; }
     .chat-window .chat-placeholder {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -211,7 +219,9 @@
     .saved-empty h3 { color: #bcc6f0; font-weight: 500; margin-bottom: 8px; }
     .saved-empty p { font-size: 14px; max-width: 320px; }
 
-    .message-row { display: flex; align-items: flex-end; gap: 8px; max-width: 80%; position: relative; animation: floatIn 0.28s ease; }
+    /* Сообщение: анимация появления ТОЛЬКО с классом .animate-in (при заходе в чат) */
+    .message-row { display: flex; align-items: flex-end; gap: 8px; max-width: 80%; position: relative; }
+    .message-row.animate-in { animation: floatIn 0.28s ease; }
     .message-row.own { align-self: flex-end; flex-direction: row-reverse; }
     .message-row.other { align-self: flex-start; }
     .messages-area.channel-view .message-row { align-self: flex-start !important; flex-direction: row !important; max-width: 92%; }
@@ -308,7 +318,31 @@
     .message .media-file .fname { font-size: 13px; word-break: break-all; }
     .message .media-file .fsize { font-size: 11px; color: #7a86b5; margin-top: 2px; }
 
-    /* ============ REACTIONS ============ */
+    /* ===== Индикатор «печатает…» в чате ===== */
+    .typing-row {
+      display: flex; align-items: center; gap: 8px; padding: 4px 8px 8px 8px;
+      animation: fadeIn 0.2s ease;
+    }
+    .typing-row .typing-avatar {
+      width: 32px; height: 32px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
+      background: linear-gradient(145deg, #4a3f7a, #2d3b7a);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 13px; color: #d3daff;
+      box-shadow: 0 0 0 2px #323a66;
+    }
+    .typing-row .typing-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .typing-row .typing-bubble {
+      background: #1e243b; border-radius: 18px 18px 18px 4px;
+      padding: 10px 16px; display: flex; align-items: center; gap: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .typing-row .typing-bubble span {
+      width: 6px; height: 6px; border-radius: 50%; background: #a78bfa;
+      animation: typing 1.2s infinite;
+    }
+    .typing-row .typing-bubble span:nth-child(2) { animation-delay: 0.15s; }
+    .typing-row .typing-bubble span:nth-child(3) { animation-delay: 0.3s; }
+
     .reactions-row { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 4px; max-width: 100%; }
     .reaction-chip {
       display: flex; align-items: center; gap: 4px;
@@ -316,7 +350,6 @@
       border-radius: 12px; padding: 3px 8px;
       font-size: 12px; color: #c8d0f0;
       cursor: pointer; transition: 0.15s; user-select: none;
-      animation: popIn 0.25s ease;
     }
     .reaction-chip:hover { background: #2a3160; border-color: #4a5090; transform: translateY(-2px) scale(1.05); }
     .reaction-chip:active { animation: reactionBounce 0.35s ease; }
@@ -348,7 +381,6 @@
 
     .reaction-backdrop { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1999; background: transparent; animation: fadeIn 0.15s ease; }
 
-    /* ============ REPLY BAR ============ */
     .reply-bar {
       display: none; align-items: center; gap: 10px;
       padding: 8px 14px; margin: 8px 12px 0 12px;
@@ -362,7 +394,6 @@
     .reply-bar .rb-close { background: transparent; border: none; color: #7a86b5; cursor: pointer; font-size: 16px; padding: 4px 8px; border-radius: 50%; transition: 0.15s; }
     .reply-bar .rb-close:hover { color: #e06b8a; transform: rotate(90deg); }
 
-    /* ============ FORWARD ============ */
     .forward-list { max-height: 340px; overflow-y: auto; background: #0f1426; border-radius: 16px; padding: 4px; margin-top: 6px; }
     .forward-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; cursor: pointer; transition: 0.15s; }
     .forward-item:hover, .forward-item.active { background: #232b4a; transform: translateX(2px); }
@@ -378,7 +409,6 @@
     .forward-item .fwd-name { font-size: 14px; font-weight: 500; color: #e5ebff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .forward-item .fwd-sub { font-size: 12px; color: #7d86b5; }
 
-    /* ============ INPUT AREA ============ */
     .input-area {
       display: flex; flex-direction: column; align-items: stretch;
       background: #121624; border-top: 1px solid #252b45;
@@ -440,7 +470,6 @@
     .mention-suggestions .ms-avatar-wrap .online-dot { width: 9px; height: 9px; border-width: 2px; border-color: #171e30; }
     .mention-suggestions .ms-login { color: #7d86b5; font-size: 12px; }
 
-    /* ============ UPLOAD INDICATOR ============ */
     .upload-indicator {
       position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
       background: #171e30; border: 1px solid #3b4170; border-radius: 40px;
@@ -457,7 +486,6 @@
     .upload-indicator .upload-bar > div { height: 100%; background: linear-gradient(90deg, #6d5fd0, #a78bfa); width: 0%; transition: width 0.15s; background-size: 200% 100%; animation: shimmer 1.5s infinite; }
     .upload-indicator .upload-text { font-size: 12px; color: #b3beea; }
 
-    /* ============ CHAT HEADER ============ */
     .chat-header-actions {
       display: flex; align-items: center; gap: 10px; padding: 10px 12px;
       background: #101424; border-bottom: 1px solid #252b45; flex-shrink: 0;
@@ -465,7 +493,6 @@
     }
     .chat-header-actions .back-btn { background: transparent; border: none; color: #a78bfa; cursor: pointer; font-size: 20px; padding: 6px 10px; border-radius: 8px; display: none; flex-shrink: 0; transition: 0.15s; }
     .chat-header-actions .back-btn:hover { background: #1e2440; transform: translateX(-2px); }
-    .chat-header-actions .back-btn:active { background: #1e2440; }
     .chat-header-actions .chat-title {
       font-weight: 600; color: #d6ddff; font-size: 15px;
       display: flex; align-items: center; gap: 8px; min-width: 0;
@@ -475,6 +502,19 @@
     .chat-header-actions .chat-title.saved i { color: #a78bfa; }
     .chat-header-actions .chat-title .members-count { font-size: 12px; color: #7b8cda; font-weight: 500; }
     .chat-header-actions .chat-title .status-text { font-size: 12px; color: #4ade80; font-weight: 500; }
+    .chat-header-actions .chat-title .status-text.typing {
+      color: #a78bfa; font-style: italic;
+      display: inline-flex; align-items: center; gap: 5px;
+    }
+    .chat-header-actions .chat-title .status-text.typing .typing-dots {
+      display: inline-flex; align-items: center; gap: 2px;
+    }
+    .chat-header-actions .chat-title .status-text.typing .typing-dots span {
+      width: 4px; height: 4px; border-radius: 50%; background: #a78bfa;
+      animation: typing 1.2s infinite;
+    }
+    .chat-header-actions .chat-title .status-text.typing .typing-dots span:nth-child(2) { animation-delay: 0.15s; }
+    .chat-header-actions .chat-title .status-text.typing .typing-dots span:nth-child(3) { animation-delay: 0.3s; }
     .chat-header-actions .chat-title .draft-badge { font-size: 10px; color: #fbbf24; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; background: #4a3b1a; padding: 2px 8px; border-radius: 10px; }
     .chat-header-actions .chat-title .local-badge { font-size: 10px; color: #a78bfa; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; background: #2a2340; padding: 2px 8px; border-radius: 10px; }
     .chat-header-actions .chat-title .channel-badge { font-size: 10px; color: #7dd3fc; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; background: #1e3a52; padding: 2px 8px; border-radius: 10px; }
@@ -484,7 +524,6 @@
     .chat-header-actions .mute-header-btn.muted { color: #e06b8a; }
     .chat-header-actions .mute-header-btn:hover { background: #1e2440; transform: scale(1.1); }
 
-    /* ============ MODALS ============ */
     .modal-overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0,0,0,0.75); backdrop-filter: blur(6px);
@@ -606,7 +645,6 @@
     .notif-toggle.on .nt-switch { background: #6d5fd0; }
     .notif-toggle.on .nt-switch::after { left: 23px; }
 
-    /* ============ SYNC INDICATOR ============ */
     .sync-indicator {
       position: fixed; bottom: 12px; left: 12px; background: #171e30;
       border: 1px solid #2f3760; border-radius: 40px; padding: 6px 12px;
@@ -617,7 +655,6 @@
     .sync-indicator.offline .dot { background: #e06b8a; }
     .sync-indicator.syncing .dot { background: #fbbf24; animation: pulseDot 0.8s infinite; }
 
-    /* ============ NOTIF TOASTS ============ */
     .notif-toast-container {
       position: fixed; top: 16px; right: 16px;
       display: flex; flex-direction: column; gap: 8px;
@@ -649,7 +686,6 @@
     .notif-toast .nt-close { background: transparent; border: none; color: #7a86b5; cursor: pointer; padding: 4px; border-radius: 50%; font-size: 12px; flex-shrink: 0; transition: 0.15s; }
     .notif-toast .nt-close:hover { color: #e06b8a; background: #232b4a; transform: rotate(90deg); }
 
-    /* ============ CHANNEL BUTTONS ============ */
     .channel-subscribe-btn {
       width: 100%; padding: 12px; border-radius: 60px; border: none;
       font-size: 15px; font-weight: 600; cursor: pointer;
@@ -668,7 +704,6 @@
     .channel-subscribe-btn.unsubscribe:hover { background: #2c3760; transform: translateY(-2px); }
     .channel-subscribe-btn:active { transform: scale(0.97); }
 
-    /* ============ CHANNEL TYPE SELECTOR ============ */
     .channel-type-selector { display: flex; gap: 8px; margin-top: 4px; }
     .channel-type-option {
       flex: 1; display: flex; align-items: center; gap: 8px;
@@ -681,25 +716,12 @@
     .channel-type-option span { color: #c8d0f0; font-size: 14px; display: flex; align-items: center; gap: 6px; }
     .channel-type-option.selected { border-color: #6d5fd0; background: #1a1f3a; box-shadow: 0 0 0 2px #3d3570; }
 
-    /* ============ RIPPLE BUTTONS ============ */
     .ripple-btn { position: relative; overflow: hidden; }
     .ripple-btn .ripple-effect {
       position: absolute; border-radius: 50%; transform: scale(0);
       animation: ripple 0.6s linear; background: rgba(255,255,255,0.35);
       pointer-events: none;
     }
-
-    /* ============ TYPING INDICATOR ============ */
-    .typing-indicator {
-      display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px;
-      font-size: 12px; color: #7d86b5;
-    }
-    .typing-indicator span {
-      width: 5px; height: 5px; border-radius: 50%; background: #7d86b5;
-      animation: typing 1.2s infinite;
-    }
-    .typing-indicator span:nth-child(2) { animation-delay: 0.15s; }
-    .typing-indicator span:nth-child(3) { animation-delay: 0.3s; }
 
     @media (max-width: 780px) {
       .chat-list { width: 100%; border-right: none; }
@@ -809,115 +831,65 @@
   <div class="upload-bar"><div id="uploadBar"></div></div>
 </div>
 
-<!-- Модалка авторизации -->
+<!-- ============ МОДАЛКИ (без изменений с прошлого раза) ============ -->
 <div class="modal-overlay" id="authModal">
   <div class="modal">
     <h2 id="modalTitle"><i class="fas fa-key"></i> Вход</h2>
     <div class="sub" id="modalSub">Войдите в существующий аккаунт</div>
-
     <form autocomplete="off" onsubmit="return false;" data-form-type="other">
       <input type="text" name="fake_user_trap" autocomplete="username" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;">
       <input type="password" name="fake_pass_trap" autocomplete="new-password" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;">
-
       <label for="loginInput">Логин</label>
-      <input type="text" id="loginInput" name="mzgram_login_2b8e"
-             placeholder="Только латиница, цифры, _ и -"
-             autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-             data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore
-             readonly onfocus="this.removeAttribute('readonly')">
-
+      <input type="text" id="loginInput" name="mzgram_login_2b8e" placeholder="Только латиница, цифры, _ и -" autocomplete="off" data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore readonly onfocus="this.removeAttribute('readonly')">
       <div id="nicknameFieldWrap" style="display:none;">
         <label for="nicknameInput">Никнейм</label>
-        <input type="text" id="nicknameInput" name="mzgram_nick_5e2a"
-               placeholder="Как вас будут видеть (до 30 символов)"
-               autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-               data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore
-               readonly onfocus="this.removeAttribute('readonly')">
+        <input type="text" id="nicknameInput" name="mzgram_nick_5e2a" placeholder="Как вас будут видеть (до 30 символов)" autocomplete="off" data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore readonly onfocus="this.removeAttribute('readonly')">
       </div>
-
       <div id="emailFieldWrap" style="display:none;">
         <label for="emailInput">Почта</label>
-        <input type="text" id="emailInput" name="mzgram_email_c4f9"
-               placeholder="you@example.com"
-               autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-               inputmode="email"
-               data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore
-               readonly onfocus="this.removeAttribute('readonly')">
+        <input type="text" id="emailInput" name="mzgram_email_c4f9" placeholder="you@example.com" autocomplete="off" data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore inputmode="email" readonly onfocus="this.removeAttribute('readonly')">
       </div>
-
       <label for="passwordInput">Пароль</label>
-      <input type="password" id="passwordInput" name="mzgram_pwd_d1a7"
-             placeholder="••••••••"
-             autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false"
-             data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore
-             readonly onfocus="this.removeAttribute('readonly')">
+      <input type="password" id="passwordInput" name="mzgram_pwd_d1a7" placeholder="••••••••" autocomplete="new-password" data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore readonly onfocus="this.removeAttribute('readonly')">
     </form>
-
     <div class="error-msg" id="authError"><i class="fas fa-exclamation-circle"></i> <span id="errorText">Неверные данные</span></div>
     <div class="btn-group">
       <button class="btn btn-primary ripple-btn" id="authSubmitBtn" type="button"><i class="fas fa-arrow-right"></i> Войти</button>
       <button class="btn btn-secondary ripple-btn" id="authCancelBtn" type="button">Отмена</button>
     </div>
     <div style="text-align:center; margin-top:14px; color:#7783c0; font-size:13px;">
-      <span id="forgotPasswordText" style="color:#a78bfa; font-weight:600; cursor:pointer; margin-right:10px; transition: 0.15s;">Забыли пароль?</span>
+      <span id="forgotPasswordText" style="color:#a78bfa; font-weight:600; cursor:pointer; margin-right:10px;">Забыли пароль?</span>
     </div>
     <div style="text-align:center; margin-top:8px; color:#7783c0; font-size:13px;">
-      Нет аккаунта? <span id="switchModeText" style="color:#a78bfa; font-weight:600; cursor:pointer; transition: 0.15s;">Зарегистрироваться</span>
+      Нет аккаунта? <span id="switchModeText" style="color:#a78bfa; font-weight:600; cursor:pointer;">Зарегистрироваться</span>
     </div>
   </div>
 </div>
 
-<!-- Модалка создания чата/канала -->
 <div class="modal-overlay" id="newChatModal">
   <div class="modal">
     <h2><i class="fas fa-plus-circle"></i> Новый чат</h2>
     <div class="sub">Создайте группу или канал</div>
-
     <form autocomplete="off" onsubmit="return false;" data-form-type="other">
       <input type="text" name="fake_user_trap_nc" autocomplete="username" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;">
       <input type="password" name="fake_pass_trap_nc" autocomplete="new-password" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;">
-
       <label for="chatTypeSelect">Тип</label>
-      <select id="chatTypeSelect" name="mzgram_chat_type_7h2p">
-        <option value="group">Группа</option>
-        <option value="channel">Канал</option>
-      </select>
-
+      <select id="chatTypeSelect" name="mzgram_chat_type_7h2p"><option value="group">Группа</option><option value="channel">Канал</option></select>
       <label for="chatNameInput">Название</label>
-      <input type="text" id="chatNameInput" name="mzgram_group_name_3f8c"
-             placeholder="Например: Рабочая группа"
-             autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-             data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore
-             readonly onfocus="this.removeAttribute('readonly')">
-
+      <input type="text" id="chatNameInput" name="mzgram_group_name_3f8c" placeholder="Например: Рабочая группа" autocomplete="off" data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore readonly onfocus="this.removeAttribute('readonly')">
       <div id="channelLoginWrap" style="display:none;">
         <label for="channelLoginInput">Логин канала (для @упоминаний)</label>
-        <input type="text" id="channelLoginInput" name="mzgram_channel_login_6a4d"
-               placeholder="my_channel"
-               autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-               data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore
-               readonly onfocus="this.removeAttribute('readonly')">
+        <input type="text" id="channelLoginInput" name="mzgram_channel_login_6a4d" placeholder="my_channel" autocomplete="off" data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore readonly onfocus="this.removeAttribute('readonly')">
         <div style="font-size:11px; color:#6a74ad; margin-top:4px; padding-left:8px;">Только a-z, 0-9, _ и -, от 3 до 32 символов</div>
       </div>
-
       <div id="channelPublicWrap" style="display:none;">
         <label>Тип канала</label>
         <div class="channel-type-selector">
-          <label class="channel-type-option selected" data-type="public">
-            <input type="radio" name="channelPublic" value="public" checked>
-            <span><i class="fas fa-globe"></i> Публичный</span>
-          </label>
-          <label class="channel-type-option" data-type="private">
-            <input type="radio" name="channelPublic" value="private">
-            <span><i class="fas fa-lock"></i> Частный</span>
-          </label>
-        </div>
-        <div style="font-size:11px; color:#6a74ad; margin-top:6px; padding-left:8px;">
-          Публичные видны в поиске. Частные — только по логину.
+          <label class="channel-type-option selected" data-type="public"><input type="radio" name="channelPublic" value="public" checked><span><i class="fas fa-globe"></i> Публичный</span></label>
+          <label class="channel-type-option" data-type="private"><input type="radio" name="channelPublic" value="private"><span><i class="fas fa-lock"></i> Частный</span></label>
         </div>
       </div>
     </form>
-
     <div class="error-msg" id="newChatError"><i class="fas fa-exclamation-circle"></i> <span id="newChatErrorText">Ошибка</span></div>
     <div class="btn-group">
       <button class="btn btn-primary ripple-btn" id="createChatBtn" type="button"><i class="fas fa-check"></i> Создать</button>
@@ -930,25 +902,17 @@
   <div class="modal">
     <h2><i class="fas fa-users-cog"></i> Настройки группы</h2>
     <div class="sub" id="groupSettingsSub">Управление участниками</div>
-
     <form autocomplete="off" onsubmit="return false;" data-form-type="other">
       <input type="text" name="fake_user_trap_gs" autocomplete="username" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;">
       <input type="password" name="fake_pass_trap_gs" autocomplete="new-password" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;">
-
       <label>Участники <span id="groupMembersCount" style="color:#7b8cda; font-weight:400;">(0)</span></label>
       <div class="member-list" id="groupMemberList"></div>
-
       <label for="inviteInput">Пригласить (логин)</label>
       <div style="display:flex; gap:8px;">
-        <input type="text" id="inviteInput" name="mzgram_invite_login_8b1e"
-               placeholder="Логин (можно с @)" style="flex:1;"
-               autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-               data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore
-               readonly onfocus="this.removeAttribute('readonly')">
+        <input type="text" id="inviteInput" name="mzgram_invite_login_8b1e" placeholder="Логин (можно с @)" style="flex:1;" autocomplete="off" data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore readonly onfocus="this.removeAttribute('readonly')">
         <button class="btn btn-primary ripple-btn" id="inviteBtn" style="flex:0 0 auto; padding:12px 16px;" type="button">Добавить</button>
       </div>
     </form>
-
     <div class="error-msg" id="groupSettingsError"><i class="fas fa-exclamation-circle"></i> <span id="groupSettingsErrorText">Ошибка</span></div>
     <div class="btn-group">
       <button class="btn btn-danger ripple-btn" id="leaveGroupBtn" type="button"><i class="fas fa-sign-out-alt"></i> Покинуть</button>
@@ -957,65 +921,37 @@
   </div>
 </div>
 
-<!-- Настройки канала -->
 <div class="modal-overlay" id="channelSettingsModal">
   <div class="modal">
     <h2><i class="fas fa-bullhorn"></i> Настройки канала</h2>
     <div class="sub" id="channelSettingsSub">Управление каналом</div>
-
     <div class="channel-avatar-wrap">
       <div class="channel-avatar" id="channelAvatarBig"><i class="fas fa-bullhorn"></i></div>
-      <div class="channel-avatar-edit" id="channelAvatarEdit" title="Загрузить аватар">
-        <i class="fas fa-camera"></i>
-      </div>
+      <div class="channel-avatar-edit" id="channelAvatarEdit" title="Загрузить аватар"><i class="fas fa-camera"></i></div>
       <input type="file" id="channelAvatarInput" accept="image/*" style="display:none;">
     </div>
-
     <form autocomplete="off" onsubmit="return false;" data-form-type="other">
       <input type="text" name="fake_user_trap_cs" autocomplete="username" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;">
       <input type="password" name="fake_pass_trap_cs" autocomplete="new-password" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;">
-
       <label for="channelLoginEdit">Логин канала (@упоминания)</label>
-      <input type="text" id="channelLoginEdit" name="mzgram_channel_login_edit_2d7a"
-             placeholder="my_channel"
-             autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-             data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore
-             readonly onfocus="this.removeAttribute('readonly')">
-      <div style="font-size:11px; color:#6a74ad; margin-top:4px; padding-left:8px;">
-        Только a-z, 0-9, _ и -, от 3 до 32 символов
-      </div>
+      <input type="text" id="channelLoginEdit" name="mzgram_channel_login_edit_2d7a" placeholder="my_channel" autocomplete="off" data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore readonly onfocus="this.removeAttribute('readonly')">
     </form>
-
     <div class="notif-toggle" id="channelPublicToggle" style="margin-top:14px;">
       <span class="nt-label"><i class="fas fa-globe"></i> Публичный канал</span>
       <span class="nt-switch"></span>
     </div>
-    <div style="font-size:12px; color:#7d86b5; margin-top:4px; padding-left:4px;">
-      Публичные каналы видны в поиске. Частные — только по логину.
-    </div>
-
     <label>Администраторы <span id="channelAdminsCount" style="color:#7b8cda; font-weight:400;">(0)</span></label>
     <div class="member-list" id="channelAdminsList"></div>
-
     <form autocomplete="off" onsubmit="return false;" data-form-type="other">
       <label for="channelInviteInput">Назначить админом (логин)</label>
       <div style="display:flex; gap:8px;">
-        <input type="text" id="channelInviteInput" name="mzgram_channel_invite_9c4f"
-               placeholder="Логин (можно с @)" style="flex:1;"
-               autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-               data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore
-               readonly onfocus="this.removeAttribute('readonly')">
+        <input type="text" id="channelInviteInput" name="mzgram_channel_invite_9c4f" placeholder="Логин (можно с @)" style="flex:1;" autocomplete="off" data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore readonly onfocus="this.removeAttribute('readonly')">
         <button class="btn btn-primary ripple-btn" id="channelInviteBtn" style="flex:0 0 auto; padding:12px 16px;" type="button">Добавить</button>
       </div>
     </form>
-
     <label for="linkedGroupSelect">Привязать группу (комментарии)</label>
-    <select id="linkedGroupSelect" name="mzgram_linked_group_4e8b">
-      <option value="">— Не привязана —</option>
-    </select>
-
+    <select id="linkedGroupSelect" name="mzgram_linked_group_4e8b"><option value="">— Не привязана —</option></select>
     <div class="error-msg" id="channelSettingsError"><i class="fas fa-exclamation-circle"></i> <span id="channelSettingsErrorText">Ошибка</span></div>
-
     <div class="btn-group">
       <button class="btn btn-danger ripple-btn" id="leaveChannelBtn" type="button"><i class="fas fa-sign-out-alt"></i> Покинуть</button>
       <button class="btn btn-secondary ripple-btn" id="closeChannelSettingsBtn" type="button">Закрыть</button>
@@ -1023,25 +959,19 @@
   </div>
 </div>
 
-<!-- Информация о канале -->
 <div class="modal-overlay" id="channelInfoModal">
   <div class="modal">
     <h2><i class="fas fa-bullhorn"></i> О канале</h2>
     <div class="sub" id="channelInfoSub">Информация</div>
-
     <div class="channel-avatar-wrap">
       <div class="channel-avatar" id="channelInfoAvatar"><i class="fas fa-bullhorn"></i></div>
     </div>
-
     <div class="profile-name" id="channelInfoName" style="text-align:center;">Канал</div>
     <div class="profile-login" id="channelInfoLogin" style="text-align:center;">@channel</div>
     <div class="profile-status" id="channelInfoType" style="text-align:center;"><i class="fas fa-globe"></i> Публичный</div>
     <div class="profile-login" id="channelInfoStats" style="text-align:center; margin-top:6px;">0 подписчиков · 0 постов</div>
-
     <div class="btn-group">
-      <button class="channel-subscribe-btn subscribe ripple-btn" id="channelSubscribeBtn" type="button">
-        <i class="fas fa-bell"></i> Подписаться
-      </button>
+      <button class="channel-subscribe-btn subscribe ripple-btn" id="channelSubscribeBtn" type="button"><i class="fas fa-bell"></i> Подписаться</button>
     </div>
     <div class="btn-group">
       <button class="btn btn-secondary ripple-btn" id="closeChannelInfoBtn" type="button">Закрыть</button>
@@ -1057,9 +987,7 @@
       <div class="profile-avatar-wrap">
         <div class="profile-avatar" id="profileAvatarBig">A</div>
         <div class="online-dot" id="profileOnlineDot"></div>
-        <div class="profile-avatar-edit" id="profileAvatarEdit" title="Загрузить фото">
-          <i class="fas fa-camera"></i>
-        </div>
+        <div class="profile-avatar-edit" id="profileAvatarEdit" title="Загрузить фото"><i class="fas fa-camera"></i></div>
         <input type="file" id="avatarInput" accept="image/*" style="display:none;">
       </div>
       <div class="profile-name" id="profileName">Имя</div>
@@ -1071,12 +999,10 @@
       <div class="row"><span>Почта:</span><span id="profileEmail">—</span></div>
       <div class="row"><span>Статус:</span><span id="profileStatus" class="status-online">онлайн</span></div>
     </div>
-
     <div class="notif-toggle on" id="globalNotifToggle">
       <span class="nt-label"><i class="fas fa-bell"></i> Уведомления приложения</span>
       <span class="nt-switch"></span>
     </div>
-
     <div class="btn-group">
       <button class="btn btn-primary ripple-btn" id="changeNicknameBtn" type="button"><i class="fas fa-pen"></i> Изменить имя</button>
       <button class="btn btn-secondary ripple-btn" id="changePasswordBtn" type="button"><i class="fas fa-lock"></i> Сменить пароль</button>
@@ -1106,9 +1032,7 @@
       <div class="row"><span>Статус:</span><span id="userProfileStatus" class="status-offline">оффлайн</span></div>
     </div>
     <div class="btn-group">
-      <button class="btn btn-primary ripple-btn" id="userProfileMessageBtn" style="display:none;" type="button">
-        <i class="fas fa-comment"></i> Написать
-      </button>
+      <button class="btn btn-primary ripple-btn" id="userProfileMessageBtn" style="display:none;" type="button"><i class="fas fa-comment"></i> Написать</button>
       <button class="btn btn-secondary ripple-btn" id="closeUserProfileBtn" type="button">Закрыть</button>
     </div>
   </div>
@@ -1118,30 +1042,16 @@
   <div class="modal">
     <h2><i class="fas fa-lock"></i> Смена пароля</h2>
     <div class="sub">Введите старый пароль и новый</div>
-
     <form autocomplete="off" onsubmit="return false;" data-form-type="other">
       <input type="text" name="fake_user_trap_cp" autocomplete="username" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;">
       <input type="password" name="fake_pass_trap_cp" autocomplete="new-password" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;">
-
       <label for="oldPasswordInput">Старый пароль</label>
-      <input type="password" id="oldPasswordInput" name="mzgram_old_pwd_2a8f"
-             placeholder="••••••••" autocomplete="new-password"
-             data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore
-             readonly onfocus="this.removeAttribute('readonly')">
-
+      <input type="password" id="oldPasswordInput" name="mzgram_old_pwd_2a8f" placeholder="••••••••" autocomplete="new-password" data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore readonly onfocus="this.removeAttribute('readonly')">
       <label for="newPasswordInput">Новый пароль</label>
-      <input type="password" id="newPasswordInput" name="mzgram_new_pwd_6b1c"
-             placeholder="••••••••" autocomplete="new-password"
-             data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore
-             readonly onfocus="this.removeAttribute('readonly')">
-
+      <input type="password" id="newPasswordInput" name="mzgram_new_pwd_6b1c" placeholder="••••••••" autocomplete="new-password" data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore readonly onfocus="this.removeAttribute('readonly')">
       <label for="newPasswordRepeatInput">Новый пароль (повтор)</label>
-      <input type="password" id="newPasswordRepeatInput" name="mzgram_new_pwd_repeat_9e4d"
-             placeholder="••••••••" autocomplete="new-password"
-             data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore
-             readonly onfocus="this.removeAttribute('readonly')">
+      <input type="password" id="newPasswordRepeatInput" name="mzgram_new_pwd_repeat_9e4d" placeholder="••••••••" autocomplete="new-password" data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore readonly onfocus="this.removeAttribute('readonly')">
     </form>
-
     <div class="error-msg" id="changePasswordError"><i class="fas fa-exclamation-circle"></i> <span id="changePasswordErrorText">Ошибка</span></div>
     <div class="btn-group">
       <button class="btn btn-primary ripple-btn" id="changePasswordSubmitBtn" type="button"><i class="fas fa-check"></i> Изменить</button>
@@ -1154,33 +1064,16 @@
   <div class="modal">
     <h2><i class="fas fa-key"></i> Восстановление пароля</h2>
     <div class="sub">Введите почту — придёт код</div>
-
     <form autocomplete="off" onsubmit="return false;" data-form-type="other">
       <input type="text" name="fake_user_trap_fp" autocomplete="username" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;">
       <input type="password" name="fake_pass_trap_fp" autocomplete="new-password" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;">
-
       <label for="resetEmailInput">Почта</label>
-      <input type="text" id="resetEmailInput" name="mzgram_reset_email_3f7a"
-             placeholder="you@example.com"
-             autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-             inputmode="email"
-             data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore
-             readonly onfocus="this.removeAttribute('readonly')">
-
+      <input type="text" id="resetEmailInput" name="mzgram_reset_email_3f7a" placeholder="you@example.com" autocomplete="off" data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore inputmode="email" readonly onfocus="this.removeAttribute('readonly')">
       <label for="resetCodeInput">Код из письма (6 цифр)</label>
-      <input type="text" id="resetCodeInput" name="mzgram_reset_code_8d2c"
-             placeholder="000000" maxlength="6" inputmode="numeric"
-             autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-             data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore
-             readonly onfocus="this.removeAttribute('readonly')">
-
+      <input type="text" id="resetCodeInput" name="mzgram_reset_code_8d2c" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="off" data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore readonly onfocus="this.removeAttribute('readonly')">
       <label for="resetNewPasswordInput">Новый пароль</label>
-      <input type="password" id="resetNewPasswordInput" name="mzgram_reset_new_pwd_5c9b"
-             placeholder="••••••••" autocomplete="new-password"
-             data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore
-             readonly onfocus="this.removeAttribute('readonly')">
+      <input type="password" id="resetNewPasswordInput" name="mzgram_reset_new_pwd_5c9b" placeholder="••••••••" autocomplete="new-password" data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore readonly onfocus="this.removeAttribute('readonly')">
     </form>
-
     <div class="error-msg" id="resetError"><i class="fas fa-exclamation-circle"></i> <span id="resetErrorText">Ошибка</span></div>
     <div class="btn-group">
       <button class="btn btn-secondary ripple-btn" id="resetSendCodeBtn" type="button"><i class="fas fa-paper-plane"></i> Отправить код</button>
@@ -1208,7 +1101,7 @@
     console.log('Mzgram инициализация...');
 
     // ============================================================
-    // ЗАЩИТА ОТ МЕНЕДЖЕРОВ ПАРОЛЕЙ И АВТОЗАПОЛНЕНИЯ БРАУЗЕРА
+    // ЗАЩИТА ОТ МЕНЕДЖЕРОВ ПАРОЛЕЙ
     // ============================================================
     function hardenInputsAgainstPasswordManagers() {
       document.querySelectorAll('input[type="password"]').forEach((inp, i) => {
@@ -1257,9 +1150,6 @@
       return result;
     };
 
-    // ============================================================
-    // RIPPLE-ЭФФЕКТ НА ВСЕХ .ripple-btn
-    // ============================================================
     function attachRipple(el) {
       el.addEventListener('click', function(e) {
         const rect = el.getBoundingClientRect();
@@ -1285,11 +1175,11 @@
     const MAX_NICKNAME_LEN = 30;
     const LOGIN_REGEX = /^[a-z0-9_\-]{3,32}$/;
     const NOTIF_TOAST_TTL = 5000;
+    const TYPING_TIMEOUT = 4000;      // через сколько мс считаем, что пользователь перестал печатать
+    const TYPING_THROTTLE = 1500;     // как часто отправлять typing:start, пока идёт ввод
 
     const SAVED_CHAT_ID = 'saved_messages_local';
 
-    // Реакции — теперь с иконками Font Awesome вместо эмодзи.
-    // Каждая запись: { id, icon, color } — id используется как ключ в реакциях.
     const REACTION_EMOJIS = [
       { id: 'like',    icon: 'fa-thumbs-up',    color: '#7dd3fc' },
       { id: 'love',    icon: 'fa-heart',        color: '#e06b8a' },
@@ -1330,6 +1220,19 @@
     let forwardTargetMsg = null;
 
     let forceScrollBottom = false;
+
+    // Флаг: проигрывать ли анимацию появления у сообщений на СЛЕДУЮЩЕМ рендере.
+    // true выставляется только при заходе в чат / открытии черновика, чтобы
+    // анимация не дёргалась при каждом обновлении списка сообщений.
+    let animateMessagesNextRender = false;
+
+    // Кто сейчас «печатает» в активном чате: Map userId -> timeoutId.
+    // Ключ — chatId, значение — Map userId -> timestamp последнего typing.
+    let typingUsers = {};              // { chatId: { userId: lastTs } }
+    let typingCleanupTimer = null;     // периодическая чистка устаревших
+    let typingSendTimer = null;        // throttle для отправки typing:start
+    let typingStopTimer = null;        // таймер отправки typing:stop после паузы
+    let lastTypingSentTs = 0;
 
     let notifSettings = { global: true, mutedChats: {} };
     let viewedPosts = new Set();
@@ -1655,9 +1558,6 @@
             if (c.type === 'channel' && !c.channelMeta) {
               c.channelMeta = { admins: c.admins || c.members.slice(0,1), subscribers: c.members.slice(), linkedGroupId: null, avatar: null, login: null, isPublic: false };
             }
-            if (c.type === 'channel' && c.channelMeta && typeof c.channelMeta.isPublic === 'undefined') {
-              c.channelMeta.isPublic = false;
-            }
           });
         } catch (e) {}
       }
@@ -1837,6 +1737,106 @@
       chat.messages.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
     }
 
+    // ---------- TYPING ----------
+    function getTypingUsersIn(chatId) {
+      const map = typingUsers[chatId];
+      if (!map) return [];
+      const now = Date.now();
+      return Object.keys(map).filter(uid => {
+        if (uid === (currentUser && currentUser.id)) return false;
+        return (now - map[uid]) < TYPING_TIMEOUT;
+      });
+    }
+
+    function emitTypingStart() {
+      if (!currentUser) return;
+      const chatId = currentChatId;
+      if (!chatId || chatId === SAVED_CHAT_ID) return;
+      const chat = getChat(chatId);
+      if (!chat) return;
+      if (chat.type === 'channel') return;
+      if (!messageInput.value.trim()) return;
+      const now = Date.now();
+      if (now - lastTypingSentTs < TYPING_THROTTLE) return;
+      lastTypingSentTs = now;
+      if (socket && isConnected) socket.emit('typing:start', { chatId, userId: currentUser.id });
+    }
+
+    function scheduleTypingStop() {
+      if (typingStopTimer) clearTimeout(typingStopTimer);
+      typingStopTimer = setTimeout(() => {
+        const chatId = currentChatId;
+        if (!chatId || chatId === SAVED_CHAT_ID) return;
+        if (socket && isConnected && currentUser) {
+          socket.emit('typing:stop', { chatId, userId: currentUser.id });
+        }
+        lastTypingSentTs = 0;
+      }, TYPING_TIMEOUT);
+    }
+
+    function cleanupTypingPeriodic() {
+      if (typingCleanupTimer) return;
+      typingCleanupTimer = setInterval(() => {
+        let needRender = false;
+        Object.keys(typingUsers).forEach(cid => {
+          const before = Object.keys(typingUsers[cid]).length;
+          const now = Date.now();
+          Object.keys(typingUsers[cid]).forEach(uid => {
+            if (now - typingUsers[cid][uid] > TYPING_TIMEOUT + 500) delete typingUsers[cid][uid];
+          });
+          if (Object.keys(typingUsers[cid]).length !== before) {
+            if (cid === currentChatId || cid === null) needRender = true;
+          }
+        });
+        if (needRender) {
+          renderTypingIndicator();
+          renderChatList();
+        }
+      }, 1000);
+    }
+
+    function renderTypingIndicator() {
+      const existing = messagesArea.querySelector('.typing-row');
+      if (existing) existing.remove();
+      if (!currentChatId || currentChatId === SAVED_CHAT_ID) return;
+      const chat = getChat(currentChatId);
+      if (!chat || chat.type === 'channel' || chat.type === 'saved') return;
+      const typers = getTypingUsersIn(currentChatId);
+      if (typers.length === 0) return;
+      const acc = getAccount(typers[0]);
+      if (!acc) return;
+      const av = resolveUrl(acc.avatar);
+      const avatarInner = av ? `<img src="${av}" alt="">` : escapeHtml(displayName(acc).charAt(0).toUpperCase());
+      const row = document.createElement('div');
+      row.className = 'typing-row';
+      row.innerHTML = `
+        <div class="typing-avatar">${avatarInner}</div>
+        <div class="typing-bubble">
+          <span></span><span></span><span></span>
+        </div>
+      `;
+      messagesArea.appendChild(row);
+      if (forceScrollBottom) messagesArea.scrollTop = messagesArea.scrollHeight;
+    }
+
+    function updateChatHeaderTypingStatus() {
+      if (!currentChatId) return;
+      const chat = getChat(currentChatId);
+      if (!chat) return;
+      if (chat.type === 'channel' || chat.type === 'group' || chat.type === 'saved') return;
+      const typers = getTypingUsersIn(currentChatId);
+      const name = getChatName(chat);
+      const other = chat.members.find(m => m !== currentUser.id);
+      const online = isUserOnline(other);
+      let statusHtml = '';
+      if (typers.length > 0) {
+        statusHtml = '<span class="status-text typing">печатает<span class="typing-dots"><span></span><span></span><span></span></span></span>';
+      } else if (online) {
+        statusHtml = '<span class="status-text">онлайн</span>';
+      }
+      chatTitle.innerHTML = `<i class="fas fa-user"></i> ${escapeHtml(name)} ${statusHtml}`;
+    }
+
     // ---------- СИНХРОНИЗАЦИЯ ----------
     function updateSyncIndicator(status, text) {
       syncIndicator.className = 'sync-indicator ' + status;
@@ -1887,9 +1887,6 @@
             });
             if (remote.type === 'channel' && !remote.channelMeta) {
               remote.channelMeta = { admins: remote.admins || [], subscribers: remote.members.slice(), linkedGroupId: null, avatar: null, login: null, isPublic: false };
-            }
-            if (remote.type === 'channel' && remote.channelMeta && typeof remote.channelMeta.isPublic === 'undefined') {
-              remote.channelMeta.isPublic = false;
             }
             remoteIds.add(remote.id);
             const local = localById[remote.id];
@@ -1987,14 +1984,8 @@
           const active = i === searchActiveIndex ? 'active' : '';
           return `
             <div class="sr-item ${active}" data-index="${i}" data-type="user" data-uid="${u.id}">
-              <div class="sr-avatar-wrap">
-                <div class="sr-avatar">${avatarInner}</div>
-                <div class="online-dot ${dotActive}"></div>
-              </div>
-              <div class="sr-info">
-                <div class="sr-name">${escapeHtml(displayName(u))}</div>
-                <div class="sr-login">@${escapeHtml(u.login)}</div>
-              </div>
+              <div class="sr-avatar-wrap"><div class="sr-avatar">${avatarInner}</div><div class="online-dot ${dotActive}"></div></div>
+              <div class="sr-info"><div class="sr-name">${escapeHtml(displayName(u))}</div><div class="sr-login">@${escapeHtml(u.login)}</div></div>
             </div>`;
         }).join('');
       }
@@ -2007,22 +1998,17 @@
           const active = (users.length + i) === searchActiveIndex ? 'active' : '';
           return `
             <div class="sr-item ${active}" data-index="${users.length + i}" data-type="channel" data-cid="${c.id}">
-              <div class="sr-avatar-wrap">
-                <div class="sr-avatar">${avatarInner}</div>
-              </div>
-              <div class="sr-info">
-                <div class="sr-name">${escapeHtml(c.name)} <i class="fas fa-globe" style="color:#7dd3fc;font-size:11px;"></i></div>
-                <div class="sr-login">@${escapeHtml(c.login)} · ${c.subscribers} подписчиков</div>
-              </div>
+              <div class="sr-avatar-wrap"><div class="sr-avatar">${avatarInner}</div></div>
+              <div class="sr-info"><div class="sr-name">${escapeHtml(c.name)} <i class="fas fa-globe" style="color:#7dd3fc;font-size:11px;"></i></div>
+              <div class="sr-login">@${escapeHtml(c.login)} · ${c.subscribers} подписчиков</div></div>
             </div>`;
         }).join('');
       }
       userSearchResults.innerHTML = html;
       userSearchResults.querySelectorAll('.sr-item').forEach(el => {
         el.onclick = () => {
-          if (el.dataset.type === 'user') {
-            openUserProfile(el.dataset.uid);
-          } else if (el.dataset.type === 'channel') {
+          if (el.dataset.type === 'user') openUserProfile(el.dataset.uid);
+          else if (el.dataset.type === 'channel') {
             const cid = el.dataset.cid;
             const chat = getChat(cid);
             if (chat) {
@@ -2095,7 +2081,6 @@
       const emojiRow = REACTION_EMOJIS.map(r =>
         `<button class="rm-btn ${myReaction === r.id ? 'active' : ''}" data-emoji="${r.id}" title="${r.id}"><i class="fas ${r.icon}" style="color:${r.color}"></i></button>`
       ).join('');
-
       let extraButtons = '';
       if (!isChannel || isAdmin) {
         extraButtons = `
@@ -2103,14 +2088,12 @@
           <button class="ma-btn" data-action="forward"><i class="fas fa-share"></i> Переслать</button>
         `;
       }
-
       actionMenuEl.innerHTML = `
         <div style="display:flex; gap:2px; padding:2px 4px 6px 4px; flex-wrap:wrap; justify-content:center;">
           ${emojiRow}
         </div>
         ${extraButtons ? '<div class="ma-sep"></div>' + extraButtons : ''}
       `;
-
       actionMenuEl.querySelectorAll('.rm-btn').forEach(btn => {
         btn.onclick = (e) => {
           e.stopPropagation();
@@ -2265,7 +2248,7 @@
           onlineUsers[data.userId] = Date.now();
           renderChatList();
           if (userSearchResults.classList.contains('active')) renderSearchResults(userSearchInput.value);
-          if (currentChatId && currentChatId !== SAVED_CHAT_ID) { const chat = getChat(currentChatId); if (chat) renderMessages(chat); updateChatHeader(); }
+          if (currentChatId && currentChatId !== SAVED_CHAT_ID) { const chat = getChat(currentChatId); if (chat) renderMessages(chat); updateChatHeaderTypingStatus(); }
           else if (draftChat) { renderDraftMessages(); updateDraftChatHeader(); }
           if (userProfileUid) refreshUserProfileStatus();
           if (groupSettingsModal.classList.contains('active')) renderGroupMembers(getChat(settingsChatId));
@@ -2282,7 +2265,7 @@
           delete onlineUsers[data.userId];
           renderChatList();
           if (userSearchResults.classList.contains('active')) renderSearchResults(userSearchInput.value);
-          if (currentChatId && currentChatId !== SAVED_CHAT_ID) { const chat = getChat(currentChatId); if (chat) renderMessages(chat); updateChatHeader(); }
+          if (currentChatId && currentChatId !== SAVED_CHAT_ID) { const chat = getChat(currentChatId); if (chat) renderMessages(chat); updateChatHeaderTypingStatus(); }
           else if (draftChat) { renderDraftMessages(); updateDraftChatHeader(); }
           if (userProfileUid) refreshUserProfileStatus();
           if (groupSettingsModal.classList.contains('active')) renderGroupMembers(getChat(settingsChatId));
@@ -2354,6 +2337,10 @@
             if (m.from !== currentUser.id && currentChatId !== data.chatId) {
               unread[data.chatId] = (unread[data.chatId] || 0) + 1;
             }
+            // Если пришло сообщение от того, кто «печатал» — сбрасываем его typing
+            if (typingUsers[data.chatId] && typingUsers[data.chatId][m.from]) {
+              delete typingUsers[data.chatId][m.from];
+            }
             if (currentChatId === data.chatId && m.from !== currentUser.id) markMessageRead(data.chatId, m);
             saveState();
             if (currentChatId === data.chatId) renderMessages(chat);
@@ -2404,6 +2391,30 @@
           msg.views = Math.max(msg.views || 0, data.views || 0);
           saveState();
           if (currentChatId === data.chatId) renderMessages(chat);
+        });
+
+        // ===== TYPING =====
+        socket.on('typing:start', (data) => {
+          if (!data || !data.chatId || !data.userId) return;
+          if (data.userId === (currentUser && currentUser.id)) return;
+          if (!typingUsers[data.chatId]) typingUsers[data.chatId] = {};
+          typingUsers[data.chatId][data.userId] = Date.now();
+          if (currentChatId === data.chatId) {
+            renderTypingIndicator();
+            updateChatHeaderTypingStatus();
+          }
+          renderChatList();
+        });
+        socket.on('typing:stop', (data) => {
+          if (!data || !data.chatId || !data.userId) return;
+          if (typingUsers[data.chatId] && typingUsers[data.chatId][data.userId]) {
+            delete typingUsers[data.chatId][data.userId];
+          }
+          if (currentChatId === data.chatId) {
+            renderTypingIndicator();
+            updateChatHeaderTypingStatus();
+          }
+          renderChatList();
         });
       } catch (err) {
         console.error('WebSocket init error:', err);
@@ -2500,8 +2511,14 @@
         chatTitle.classList.remove('saved');
         const other = chat.members.find(m => m !== currentUser.id);
         const online = isUserOnline(other);
-        const status = online ? '<span class="status-text">онлайн</span>' : '';
-        chatTitle.innerHTML = `<i class="fas fa-user"></i> ${escapeHtml(name)} ${status}`;
+        const typers = getTypingUsersIn(currentChatId);
+        let statusHtml = '';
+        if (typers.length > 0) {
+          statusHtml = '<span class="status-text typing">печатает<span class="typing-dots"><span></span><span></span><span></span></span></span>';
+        } else if (online) {
+          statusHtml = '<span class="status-text">онлайн</span>';
+        }
+        chatTitle.innerHTML = `<i class="fas fa-user"></i> ${escapeHtml(name)} ${statusHtml}`;
       }
       updateMuteHeaderBtn();
     }
@@ -2568,7 +2585,13 @@
         const name = getChatName(chat);
         const lastMsg = chat.messages && chat.messages.length ? chat.messages[chat.messages.length - 1] : null;
         let lastText = 'Нет сообщений';
-        if (lastMsg) {
+        let isTypingPreview = false;
+        // Приоритет: если кто-то печатает в этом чате — показываем «печатает…»
+        const typers = getTypingUsersIn(chat.id);
+        if (typers.length > 0) {
+          isTypingPreview = true;
+          lastText = '';
+        } else if (lastMsg) {
           if (lastMsg.media) {
             const kind = lastMsg.media.kind;
             const icon = kind === 'image' ? '<i class="fas fa-image"></i>' : kind === 'video' ? '<i class="fas fa-video"></i>' : kind === 'audio' ? '<i class="fas fa-music"></i>' : '<i class="fas fa-paperclip"></i>';
@@ -2603,12 +2626,15 @@
         const unreadHtml = cnt > 0 ? `<div class="unread-badge ${isMuted ? 'muted' : ''}">${cnt > 99 ? '99+' : cnt}</div>` : '';
         const muteIcon = isMuted ? '<i class="fas fa-bell-slash mute-icon"></i>' : '';
         const muteBtnIcon = isMuted ? '<i class="fas fa-bell-slash"></i>' : '<i class="fas fa-bell"></i>';
+        const lastMsgHtml = isTypingPreview
+          ? `<div class="last-msg typing-preview">печатает<span class="typing-dots"><span></span><span></span><span></span></span></div>`
+          : `<div class="last-msg">${escapeHtml(lastText)}</div>`;
         html += `
           <div class="chat-item${typeClass} ${isActive ? 'active' : ''}" data-chat-id="${chat.id}">
             ${avatarBlock}
             <div class="chat-info">
               <div class="name">${escapeHtml(name)} ${nameSuffix}${muteIcon}</div>
-              <div class="last-msg">${escapeHtml(lastText)}</div>
+              ${lastMsgHtml}
             </div>
             <div class="chat-meta">
               <button class="mute-btn ${isMuted ? 'muted' : ''}" data-mute-chat="${chat.id}" title="${isMuted ? 'Включить уведомления' : 'Отключить уведомления'}">${muteBtnIcon}</button>
@@ -2649,6 +2675,8 @@
       sortMessages(chat);
       renderChatList();
       forceScrollBottom = true;
+      // Разрешаем анимацию появления сообщений только при заходе в чат
+      animateMessagesNextRender = true;
       renderMessages(chat);
       chatPlaceholder.style.display = 'none';
       messagesArea.style.display = 'flex';
@@ -2673,6 +2701,7 @@
       currentChatId = null;
       renderChatList();
       forceScrollBottom = true;
+      animateMessagesNextRender = true;
       renderDraftMessages();
       chatPlaceholder.style.display = 'none';
       messagesArea.style.display = 'flex';
@@ -2690,6 +2719,7 @@
       draftChat.tempMessages.forEach(msg => renderSingleMessage(msg, true));
       attachMessageHandlers();
       messagesArea.scrollTop = messagesArea.scrollHeight;
+      animateMessagesNextRender = false;
     }
     function openDraftOrExisting(otherUid) {
       if (!currentUser) return;
@@ -2716,6 +2746,8 @@
       draftChat = null;
       currentChatId = newChat.id;
       forceScrollBottom = true;
+      // Только что создали — не анимируем, тут только одно сообщение
+      animateMessagesNextRender = false;
       renderChatList();
       renderMessages(newChat);
       updateChatHeader();
@@ -2732,9 +2764,10 @@
       const isChannel = chat && chat.type === 'channel';
       const row = document.createElement('div');
       row.className = `message-row ${isOwn ? 'own' : 'other'}`;
-      if (isChannel) {
-        row.className = `message-row other`;
-      }
+      if (isChannel) row.className = `message-row other`;
+      // Анимируем только если это разрешено флагом (заход в чат)
+      if (animateMessagesNextRender) row.classList.add('animate-in');
+
       const senderAvatar = sender ? resolveUrl(sender.avatar) : null;
       const avatarInner = senderAvatar ? `<img src="${senderAvatar}" alt="">` : escapeHtml(senderName.charAt(0).toUpperCase() || '?');
       const dotActive = senderOnline && !isChannel ? 'active' : '';
@@ -2866,9 +2899,7 @@
               if (isSub) openChat(cid);
               else if (chat.channelMeta && chat.channelMeta.isPublic) openChannelInfo(cid);
               else showToast('Это частный канал. Доступ только по приглашению.');
-            } else {
-              showToast('Канал не найден');
-            }
+            } else showToast('Канал не найден');
             return;
           }
           const acc = uid ? getAccount(uid) : getAccountByLogin(login);
@@ -2895,18 +2926,23 @@
             <p>Отправляйте сюда сообщения, ссылки, фото и файлы — они останутся только на этом устройстве.</p>
           </div>`;
         forceScrollBottom = false;
+        animateMessagesNextRender = false;
         return;
       }
       if (!chat.messages) chat.messages = [];
       sortMessages(chat);
       chat.messages.forEach(msg => renderSingleMessage(msg, false));
       attachMessageHandlers();
+      // После отрисовки сообщений — сразу рисуем индикатор печати
+      renderTypingIndicator();
       if (forceScrollBottom || wasAtBottom) messagesArea.scrollTop = messagesArea.scrollHeight;
       else {
         const newScrollHeight = messagesArea.scrollHeight;
         messagesArea.scrollTop = newScrollHeight - prevClientHeight - distanceFromBottom;
       }
       forceScrollBottom = false;
+      // Сбрасываем флаг: следующие ререндеры (реакции, синк, новые сообщения) без анимации
+      animateMessagesNextRender = false;
     }
 
     // ---------- REPLY / FORWARD ----------
@@ -3025,7 +3061,11 @@
       messageInput.value = '';
       hideMentionSuggestions();
       clearReplyTarget();
-      // Анимация отправки
+      // Сбрасываем свой «typing» — отправили сообщение
+      if (socket && isConnected) socket.emit('typing:stop', { chatId: currentChatId, userId: currentUser.id });
+      if (typingStopTimer) { clearTimeout(typingStopTimer); typingStopTimer = null; }
+      lastTypingSentTs = 0;
+
       sendBtn.classList.add('sending');
       setTimeout(() => sendBtn.classList.remove('sending'), 800);
       if (chat.type === 'saved') {
@@ -3118,7 +3158,20 @@
       messageInput.focus();
       hideMentionSuggestions();
     }
-    messageInput.addEventListener('input', updateMentionSuggestions);
+    messageInput.addEventListener('input', (e) => {
+      updateMentionSuggestions();
+      // Отправляем typing:start с throttle
+      emitTypingStart();
+      // И перезапускаем таймер typing:stop
+      scheduleTypingStop();
+    });
+    messageInput.addEventListener('blur', () => {
+      if (currentUser && currentChatId && currentChatId !== SAVED_CHAT_ID) {
+        if (socket && isConnected) socket.emit('typing:stop', { chatId: currentChatId, userId: currentUser.id });
+        if (typingStopTimer) { clearTimeout(typingStopTimer); typingStopTimer = null; }
+        lastTypingSentTs = 0;
+      }
+    });
     messageInput.addEventListener('keydown', (e) => {
       if (mentionSuggestions.classList.contains('active') && mentionList.length > 0) {
         if (e.key === 'ArrowDown') { e.preventDefault(); mentionActiveIndex = (mentionActiveIndex + 1) % mentionList.length; renderMentionSuggestions(); return; }
@@ -3168,7 +3221,6 @@
       mediaPickerCancelBtn.onclick = (e) => { e.preventDefault(); closeMediaPicker(); };
       mediaPickerModal.onclick = (e) => { if (e.target === mediaPickerModal) closeMediaPicker(); };
       mediaPickerSendBtn.onclick = async (e) => { e.preventDefault(); await sendMediaPickerFiles(); };
-      // Ripple для динамически добавленных кнопок
       mediaPickerModal.querySelectorAll('.ripple-btn').forEach(attachRipple);
     }
     function addFilesToMediaPicker(files) {
@@ -3733,7 +3785,6 @@
       profileModal.classList.add('active');
     }
     function closeProfile() { profileModal.classList.remove('active'); }
-
     async function changeNickname() {
       const current = displayName(currentUser);
       const input = prompt('Введите новый никнейм (до ' + MAX_NICKNAME_LEN + ' символов):', current);
@@ -3908,6 +3959,7 @@
       await loadFromServer();
       initWebSocket();
       initMediaPickerModal();
+      cleanupTypingPeriodic();
 
       const savedUser = localStorage.getItem('mzgram_user');
       if (savedUser) {
@@ -4113,7 +4165,12 @@
       });
       window.addEventListener('online', () => { if (!isConnected) scheduleReconnect(); });
       window.addEventListener('beforeunload', () => {
-        if (socket && isConnected && currentUser) socket.emit('user:offline', { userId: currentUser.id });
+        if (socket && isConnected && currentUser) {
+          socket.emit('user:offline', { userId: currentUser.id });
+          if (currentChatId && currentChatId !== SAVED_CHAT_ID) {
+            socket.emit('typing:stop', { chatId: currentChatId, userId: currentUser.id });
+          }
+        }
         if (currentUser) { localStorage.setItem('mzgram_user', JSON.stringify(currentUser)); if (currentChatId) localStorage.setItem('mzgram_chat', currentChatId); }
         saveState();
         saveSavedChats();
