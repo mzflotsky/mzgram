@@ -11,6 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
+const multer = require('multer');
 
 const app = express();
 app.use(cors());
@@ -27,7 +28,6 @@ const io = new Server(server, {
 // ---------- ПУТИ (адаптированы под Render) ----------
 const TMP_DIR = os.tmpdir();
 
-// Ищем Mzgram.html в нескольких местах
 function findHtmlFile() {
   const candidates = [
     path.join(__dirname, 'Mzgram.html'),
@@ -48,7 +48,6 @@ const MEDIA_DIR = path.join(TMP_DIR, 'server-media');
 const AVATARS_DIR = path.join(MEDIA_DIR, 'avatars');
 const CHANNEL_AVATARS_DIR = path.join(MEDIA_DIR, 'channel-avatars');
 
-// Создаём папки в tmp (там точно есть права на запись)
 [MEDIA_DIR, AVATARS_DIR, CHANNEL_AVATARS_DIR].forEach(dir => {
   try {
     if (!fs.existsSync(dir)) {
@@ -136,7 +135,7 @@ function generateChannelLoginFromName(name) {
   return base;
 }
 
-// ---------- МЕДИА ----------
+// ---------- МЕДИА (сохранение из data URL — legacy + миграция) ----------
 function saveMediaFromDataUrl(dataUrl, prefix = 'file') {
   if (typeof dataUrl !== 'string') return null;
   const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
@@ -218,6 +217,22 @@ function processIncomingMessages(messages) {
     return msg;
   });
 }
+
+// ============================================================
+// MULTER — загрузка медиа (multipart/form-data)
+// ============================================================
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, MEDIA_DIR),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.bin';
+    const name = `file_${Date.now()}_${crypto.randomBytes(4).toString('hex')}${ext}`;
+    cb(null, name);
+  }
+});
+const upload = multer({
+  storage,
+  limits: { fileSize: 30 * 1024 * 1024 } // 30 МБ
+});
 
 // ============================================================
 // ХРАНИЛИЩЕ (in-memory + persist в tmp)
@@ -338,6 +353,22 @@ app.get('/Mzgram.html', (req, res) => {
 app.get('/index.html', (req, res) => {
   if (fs.existsSync(HTML_FILE)) res.sendFile(HTML_FILE);
   else res.status(404).send('Не найдено');
+});
+
+// ============================================================
+// ЗАГРУЗКА МЕДИА (multipart/form-data)
+// ============================================================
+app.post('/api/upload', upload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ ok: false, error: 'no_file' });
+  const url = `/media/${req.file.filename}`;
+  log(`Загружено медиа: ${url} (${req.file.size} байт)`);
+  res.json({
+    ok: true,
+    url,
+    name: req.file.originalname,
+    size: req.file.size,
+    mime: req.file.mimetype || 'application/octet-stream'
+  });
 });
 
 // Health-check для Render
@@ -730,6 +761,16 @@ io.on('connection', (socket) => {
         socket.to(chatId).emit('message:viewed', { chatId, messageId, views: msg.views });
       }
     }
+  });
+
+  // ===== ИНДИКАТОР ПЕЧАТИ =====
+  socket.on('typing:start', ({ chatId, userId }) => {
+    if (!chatId || !userId) return;
+    socket.to(chatId).emit('typing:start', { chatId, userId });
+  });
+  socket.on('typing:stop', ({ chatId, userId }) => {
+    if (!chatId || !userId) return;
+    socket.to(chatId).emit('typing:stop', { chatId, userId });
   });
 
   socket.on('channel:subscribe', ({ channelId, userId }) => {
