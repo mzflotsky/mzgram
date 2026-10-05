@@ -10,6 +10,12 @@
     html, body { width: 100%; height: 100%; background: #0b0d14; color: #e8edf5; overscroll-behavior: none; }
     #app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; width: 100vw; background: #0f111c; overflow: hidden; }
 
+    /* Псевдо-пароль: визуально точки, но для браузера — обычный text */
+    .pseudo-password {
+      -webkit-text-security: disc !important;
+      text-security: disc !important;
+    }
+
     @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     @keyframes popIn { 0% { transform: scale(0.7); opacity: 0; } 60% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
@@ -219,7 +225,6 @@
     .saved-empty h3 { color: #bcc6f0; font-weight: 500; margin-bottom: 8px; }
     .saved-empty p { font-size: 14px; max-width: 320px; }
 
-    /* Сообщение: анимация появления ТОЛЬКО с классом .animate-in (при заходе в чат) */
     .message-row { display: flex; align-items: flex-end; gap: 8px; max-width: 80%; position: relative; }
     .message-row.animate-in { animation: floatIn 0.28s ease; }
     .message-row.own { align-self: flex-end; flex-direction: row-reverse; }
@@ -318,7 +323,6 @@
     .message .media-file .fname { font-size: 13px; word-break: break-all; }
     .message .media-file .fsize { font-size: 11px; color: #7a86b5; margin-top: 2px; }
 
-    /* ===== Индикатор «печатает…» в чате ===== */
     .typing-row {
       display: flex; align-items: center; gap: 8px; padding: 4px 8px 8px 8px;
       animation: fadeIn 0.2s ease;
@@ -831,26 +835,37 @@
   <div class="upload-bar"><div id="uploadBar"></div></div>
 </div>
 
-<!-- ============ МОДАЛКИ (без изменений с прошлого раза) ============ -->
+<!-- ============ МОДАЛКИ ============ -->
+
+<!-- АВТОРИЗАЦИЯ -->
 <div class="modal-overlay" id="authModal">
   <div class="modal">
     <h2 id="modalTitle"><i class="fas fa-key"></i> Вход</h2>
     <div class="sub" id="modalSub">Войдите в существующий аккаунт</div>
     <form autocomplete="off" onsubmit="return false;" data-form-type="other">
       <input type="text" name="fake_user_trap" autocomplete="username" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;">
-      <input type="password" name="fake_pass_trap" autocomplete="new-password" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;">
+      <input type="text" name="fake_pass_trap" autocomplete="new-password" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;">
+
       <label for="loginInput">Логин</label>
       <input type="text" id="loginInput" name="mzgram_login_2b8e" placeholder="Только латиница, цифры, _ и -" autocomplete="off" data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore readonly onfocus="this.removeAttribute('readonly')">
+
       <div id="nicknameFieldWrap" style="display:none;">
         <label for="nicknameInput">Никнейм</label>
         <input type="text" id="nicknameInput" name="mzgram_nick_5e2a" placeholder="Как вас будут видеть (до 30 символов)" autocomplete="off" data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore readonly onfocus="this.removeAttribute('readonly')">
       </div>
+
       <div id="emailFieldWrap" style="display:none;">
         <label for="emailInput">Почта</label>
         <input type="text" id="emailInput" name="mzgram_email_c4f9" placeholder="you@example.com" autocomplete="off" data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore inputmode="email" readonly onfocus="this.removeAttribute('readonly')">
       </div>
+
       <label for="passwordInput">Пароль</label>
-      <input type="password" id="passwordInput" name="mzgram_pwd_d1a7" placeholder="••••••••" autocomplete="new-password" data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore readonly onfocus="this.removeAttribute('readonly')">
+      <!-- type="text" + pseudo-password: браузер не проверяет на утечки -->
+      <input type="text" id="passwordInput" name="mzgram_pwd_d1a7" placeholder="••••••••"
+             class="pseudo-password"
+             autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+             data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore
+             readonly onfocus="this.removeAttribute('readonly')">
     </form>
     <div class="error-msg" id="authError"><i class="fas fa-exclamation-circle"></i> <span id="errorText">Неверные данные</span></div>
     <div class="btn-group">
@@ -866,13 +881,14 @@
   </div>
 </div>
 
+<!-- СОЗДАНИЕ ЧАТА -->
 <div class="modal-overlay" id="newChatModal">
   <div class="modal">
     <h2><i class="fas fa-plus-circle"></i> Новый чат</h2>
     <div class="sub">Создайте группу или канал</div>
     <form autocomplete="off" onsubmit="return false;" data-form-type="other">
       <input type="text" name="fake_user_trap_nc" autocomplete="username" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;">
-      <input type="password" name="fake_pass_trap_nc" autocomplete="new-password" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;">
+      <input type="text" name="fake_pass_trap_nc" autocomplete="new-password" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;">
       <label for="chatTypeSelect">Тип</label>
       <select id="chatTypeSelect" name="mzgram_chat_type_7h2p"><option value="group">Группа</option><option value="channel">Канал</option></select>
       <label for="chatNameInput">Название</label>
@@ -880,7 +896,6 @@
       <div id="channelLoginWrap" style="display:none;">
         <label for="channelLoginInput">Логин канала (для @упоминаний)</label>
         <input type="text" id="channelLoginInput" name="mzgram_channel_login_6a4d" placeholder="my_channel" autocomplete="off" data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore readonly onfocus="this.removeAttribute('readonly')">
-        <div style="font-size:11px; color:#6a74ad; margin-top:4px; padding-left:8px;">Только a-z, 0-9, _ и -, от 3 до 32 символов</div>
       </div>
       <div id="channelPublicWrap" style="display:none;">
         <label>Тип канала</label>
@@ -898,13 +913,14 @@
   </div>
 </div>
 
+<!-- НАСТРОЙКИ ГРУППЫ -->
 <div class="modal-overlay" id="groupSettingsModal">
   <div class="modal">
     <h2><i class="fas fa-users-cog"></i> Настройки группы</h2>
     <div class="sub" id="groupSettingsSub">Управление участниками</div>
     <form autocomplete="off" onsubmit="return false;" data-form-type="other">
       <input type="text" name="fake_user_trap_gs" autocomplete="username" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;">
-      <input type="password" name="fake_pass_trap_gs" autocomplete="new-password" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;">
+      <input type="text" name="fake_pass_trap_gs" autocomplete="new-password" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;">
       <label>Участники <span id="groupMembersCount" style="color:#7b8cda; font-weight:400;">(0)</span></label>
       <div class="member-list" id="groupMemberList"></div>
       <label for="inviteInput">Пригласить (логин)</label>
@@ -921,6 +937,7 @@
   </div>
 </div>
 
+<!-- НАСТРОЙКИ КАНАЛА -->
 <div class="modal-overlay" id="channelSettingsModal">
   <div class="modal">
     <h2><i class="fas fa-bullhorn"></i> Настройки канала</h2>
@@ -932,7 +949,7 @@
     </div>
     <form autocomplete="off" onsubmit="return false;" data-form-type="other">
       <input type="text" name="fake_user_trap_cs" autocomplete="username" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;">
-      <input type="password" name="fake_pass_trap_cs" autocomplete="new-password" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;">
+      <input type="text" name="fake_pass_trap_cs" autocomplete="new-password" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;">
       <label for="channelLoginEdit">Логин канала (@упоминания)</label>
       <input type="text" id="channelLoginEdit" name="mzgram_channel_login_edit_2d7a" placeholder="my_channel" autocomplete="off" data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore readonly onfocus="this.removeAttribute('readonly')">
     </form>
@@ -959,6 +976,7 @@
   </div>
 </div>
 
+<!-- ИНФО О КАНАЛЕ -->
 <div class="modal-overlay" id="channelInfoModal">
   <div class="modal">
     <h2><i class="fas fa-bullhorn"></i> О канале</h2>
@@ -979,6 +997,7 @@
   </div>
 </div>
 
+<!-- ПРОФИЛЬ -->
 <div class="modal-overlay" id="profileModal">
   <div class="modal">
     <h2><i class="fas fa-user"></i> Мой профиль</h2>
@@ -1014,6 +1033,7 @@
   </div>
 </div>
 
+<!-- ЧУЖОЙ ПРОФИЛЬ -->
 <div class="modal-overlay" id="userProfileModal">
   <div class="modal">
     <h2><i class="fas fa-user-circle"></i> Профиль</h2>
@@ -1038,19 +1058,32 @@
   </div>
 </div>
 
+<!-- СМЕНА ПАРОЛЯ -->
 <div class="modal-overlay" id="changePasswordModal">
   <div class="modal">
     <h2><i class="fas fa-lock"></i> Смена пароля</h2>
     <div class="sub">Введите старый пароль и новый</div>
     <form autocomplete="off" onsubmit="return false;" data-form-type="other">
       <input type="text" name="fake_user_trap_cp" autocomplete="username" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;">
-      <input type="password" name="fake_pass_trap_cp" autocomplete="new-password" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;">
+      <input type="text" name="fake_pass_trap_cp" autocomplete="new-password" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;">
+
       <label for="oldPasswordInput">Старый пароль</label>
-      <input type="password" id="oldPasswordInput" name="mzgram_old_pwd_2a8f" placeholder="••••••••" autocomplete="new-password" data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore readonly onfocus="this.removeAttribute('readonly')">
+      <input type="text" id="oldPasswordInput" name="mzgram_old_pwd_2a8f" placeholder="••••••••"
+             class="pseudo-password" autocomplete="off" data-form-type="other"
+             data-lpignore="true" data-1p-ignore data-bwignore
+             readonly onfocus="this.removeAttribute('readonly')">
+
       <label for="newPasswordInput">Новый пароль</label>
-      <input type="password" id="newPasswordInput" name="mzgram_new_pwd_6b1c" placeholder="••••••••" autocomplete="new-password" data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore readonly onfocus="this.removeAttribute('readonly')">
+      <input type="text" id="newPasswordInput" name="mzgram_new_pwd_6b1c" placeholder="••••••••"
+             class="pseudo-password" autocomplete="off" data-form-type="other"
+             data-lpignore="true" data-1p-ignore data-bwignore
+             readonly onfocus="this.removeAttribute('readonly')">
+
       <label for="newPasswordRepeatInput">Новый пароль (повтор)</label>
-      <input type="password" id="newPasswordRepeatInput" name="mzgram_new_pwd_repeat_9e4d" placeholder="••••••••" autocomplete="new-password" data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore readonly onfocus="this.removeAttribute('readonly')">
+      <input type="text" id="newPasswordRepeatInput" name="mzgram_new_pwd_repeat_9e4d" placeholder="••••••••"
+             class="pseudo-password" autocomplete="off" data-form-type="other"
+             data-lpignore="true" data-1p-ignore data-bwignore
+             readonly onfocus="this.removeAttribute('readonly')">
     </form>
     <div class="error-msg" id="changePasswordError"><i class="fas fa-exclamation-circle"></i> <span id="changePasswordErrorText">Ошибка</span></div>
     <div class="btn-group">
@@ -1060,19 +1093,23 @@
   </div>
 </div>
 
+<!-- ВОССТАНОВЛЕНИЕ ПАРОЛЯ -->
 <div class="modal-overlay" id="forgotPasswordModal">
   <div class="modal">
     <h2><i class="fas fa-key"></i> Восстановление пароля</h2>
     <div class="sub">Введите почту — придёт код</div>
     <form autocomplete="off" onsubmit="return false;" data-form-type="other">
       <input type="text" name="fake_user_trap_fp" autocomplete="username" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;">
-      <input type="password" name="fake_pass_trap_fp" autocomplete="new-password" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;">
+      <input type="text" name="fake_pass_trap_fp" autocomplete="new-password" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;">
       <label for="resetEmailInput">Почта</label>
       <input type="text" id="resetEmailInput" name="mzgram_reset_email_3f7a" placeholder="you@example.com" autocomplete="off" data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore inputmode="email" readonly onfocus="this.removeAttribute('readonly')">
       <label for="resetCodeInput">Код из письма (6 цифр)</label>
       <input type="text" id="resetCodeInput" name="mzgram_reset_code_8d2c" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="off" data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore readonly onfocus="this.removeAttribute('readonly')">
       <label for="resetNewPasswordInput">Новый пароль</label>
-      <input type="password" id="resetNewPasswordInput" name="mzgram_reset_new_pwd_5c9b" placeholder="••••••••" autocomplete="new-password" data-form-type="other" data-lpignore="true" data-1p-ignore data-bwignore readonly onfocus="this.removeAttribute('readonly')">
+      <input type="text" id="resetNewPasswordInput" name="mzgram_reset_new_pwd_5c9b" placeholder="••••••••"
+             class="pseudo-password" autocomplete="off" data-form-type="other"
+             data-lpignore="true" data-1p-ignore data-bwignore
+             readonly onfocus="this.removeAttribute('readonly')">
     </form>
     <div class="error-msg" id="resetError"><i class="fas fa-exclamation-circle"></i> <span id="resetErrorText">Ошибка</span></div>
     <div class="btn-group">
@@ -1085,6 +1122,7 @@
   </div>
 </div>
 
+<!-- ПЕРЕСЛАТЬ -->
 <div class="modal-overlay" id="forwardModal">
   <div class="modal">
     <h2><i class="fas fa-share"></i> Переслать</h2>
@@ -1101,18 +1139,10 @@
     console.log('Mzgram инициализация...');
 
     // ============================================================
-    // ЗАЩИТА ОТ МЕНЕДЖЕРОВ ПАРОЛЕЙ
+    // ЗАЩИТА ОТ МЕНЕДЖЕРОВ ПАРОЛЕЙ И ОТ ПРОВЕРКИ БРАУЗЕРОМ УТЕЧЕК
     // ============================================================
     function hardenInputsAgainstPasswordManagers() {
-      document.querySelectorAll('input[type="password"]').forEach((inp, i) => {
-        inp.setAttribute('autocomplete', 'new-password');
-        inp.setAttribute('data-form-type', 'other');
-        inp.setAttribute('data-lpignore', 'true');
-        inp.setAttribute('data-1p-ignore', '');
-        inp.setAttribute('data-bwignore', '');
-        if (!inp.dataset.origName) inp.dataset.origName = inp.getAttribute('name') || '';
-        inp.setAttribute('name', 'pwd_' + Math.random().toString(36).slice(2) + '_' + i);
-      });
+      // Обычные текстовые поля
       document.querySelectorAll('input[type="text"], input[type="search"], input[type="email"], textarea').forEach(inp => {
         if (inp.dataset.fakeTrap === '1') return;
         if (!inp.hasAttribute('autocomplete')) inp.setAttribute('autocomplete', 'off');
@@ -1129,15 +1159,6 @@
     document.body.appendChild = function(node) {
       const result = origAppendChild(node);
       if (node && node.querySelectorAll) {
-        node.querySelectorAll('input[type="password"]').forEach((inp, i) => {
-          inp.setAttribute('autocomplete', 'new-password');
-          inp.setAttribute('data-form-type', 'other');
-          inp.setAttribute('data-lpignore', 'true');
-          inp.setAttribute('data-1p-ignore', '');
-          inp.setAttribute('data-bwignore', '');
-          if (!inp.dataset.origName) inp.dataset.origName = inp.getAttribute('name') || '';
-          inp.setAttribute('name', 'pwd_' + Math.random().toString(36).slice(2) + '_dyn_' + i);
-        });
         node.querySelectorAll('input[type="text"], input[type="search"], input[type="email"]').forEach(inp => {
           if (inp.dataset.fakeTrap === '1') return;
           if (!inp.hasAttribute('autocomplete')) inp.setAttribute('autocomplete', 'off');
@@ -1175,8 +1196,8 @@
     const MAX_NICKNAME_LEN = 30;
     const LOGIN_REGEX = /^[a-z0-9_\-]{3,32}$/;
     const NOTIF_TOAST_TTL = 5000;
-    const TYPING_TIMEOUT = 4000;      // через сколько мс считаем, что пользователь перестал печатать
-    const TYPING_THROTTLE = 1500;     // как часто отправлять typing:start, пока идёт ввод
+    const TYPING_TIMEOUT = 4000;
+    const TYPING_THROTTLE = 1500;
 
     const SAVED_CHAT_ID = 'saved_messages_local';
 
@@ -1220,18 +1241,12 @@
     let forwardTargetMsg = null;
 
     let forceScrollBottom = false;
-
-    // Флаг: проигрывать ли анимацию появления у сообщений на СЛЕДУЮЩЕМ рендере.
-    // true выставляется только при заходе в чат / открытии черновика, чтобы
-    // анимация не дёргалась при каждом обновлении списка сообщений.
     let animateMessagesNextRender = false;
 
-    // Кто сейчас «печатает» в активном чате: Map userId -> timeoutId.
-    // Ключ — chatId, значение — Map userId -> timestamp последнего typing.
-    let typingUsers = {};              // { chatId: { userId: lastTs } }
-    let typingCleanupTimer = null;     // периодическая чистка устаревших
-    let typingSendTimer = null;        // throttle для отправки typing:start
-    let typingStopTimer = null;        // таймер отправки typing:stop после паузы
+    let typingUsers = {};
+    let typingCleanupTimer = null;
+    let typingSendTimer = null;
+    let typingStopTimer = null;
     let lastTypingSentTs = 0;
 
     let notifSettings = { global: true, mutedChats: {} };
@@ -1270,10 +1285,8 @@
     const replyBarText = document.getElementById('replyBarText');
     const replyBarClose = document.getElementById('replyBarClose');
     const channelReadonlyNote = document.getElementById('channelReadonlyNote');
-
     const notifToastContainer = document.getElementById('notifToastContainer');
     const globalNotifToggle = document.getElementById('globalNotifToggle');
-
     const forwardModal = document.getElementById('forwardModal');
     const forwardList = document.getElementById('forwardList');
     const forwardCancelBtn = document.getElementById('forwardCancelBtn');
@@ -1432,7 +1445,25 @@
       if (!savedChats[uid]) savedChats[uid] = { id: SAVED_CHAT_ID, type: 'saved', name: 'Избранное', members: [uid], messages: [] };
       return savedChats[uid];
     }
-    function saveSavedChats() { localStorage.setItem('mzgram_saved', JSON.stringify(savedChats)); }
+    function saveSavedChats() {
+      const light = {};
+      Object.keys(savedChats).forEach(uid => {
+        const c = savedChats[uid];
+        const messages = (c.messages || []).map(m => {
+          if (m.media && m.media.url && m.media.data) {
+            const { data, ...rest } = m.media;
+            return { ...m, media: rest };
+          }
+          return m;
+        });
+        light[uid] = { ...c, messages };
+      });
+      try {
+        localStorage.setItem('mzgram_saved', JSON.stringify(light));
+      } catch (e) {
+        console.warn('Не удалось сохранить Избранное: ' + e.message);
+      }
+    }
     function loadSavedChats() {
       try {
         savedChats = JSON.parse(localStorage.getItem('mzgram_saved') || '{}');
@@ -1536,9 +1567,37 @@
       return REACTION_EMOJIS.find(r => r.id === id) || { id, icon: 'fa-circle-question', color: '#7a86b5' };
     }
 
+    // saveState теперь не тащит base64 в localStorage
     function saveState() {
-      localStorage.setItem('mzgram_data', JSON.stringify({ accounts, chats }));
-      localStorage.setItem('mzgram_unread', JSON.stringify(unread));
+      const lightChats = chats.map(c => {
+        if (!c.messages || !c.messages.length) return c;
+        let dirty = false;
+        const messages = c.messages.map(m => {
+          if (m.media && m.media.url && m.media.data) {
+            dirty = true;
+            const { data, ...rest } = m.media;
+            return { ...m, media: rest };
+          }
+          return m;
+        });
+        return dirty ? { ...c, messages } : c;
+      });
+      try {
+        localStorage.setItem('mzgram_data', JSON.stringify({ accounts, chats: lightChats }));
+        localStorage.setItem('mzgram_unread', JSON.stringify(unread));
+      } catch (e) {
+        console.warn('localStorage переполнен, чистим старые чаты');
+        try {
+          const minimal = lightChats.map(c => ({
+            ...c,
+            messages: (c.messages || []).slice(-50)
+          }));
+          localStorage.setItem('mzgram_data', JSON.stringify({ accounts, chats: minimal }));
+          localStorage.setItem('mzgram_unread', JSON.stringify(unread));
+        } catch (e2) {
+          console.error('Не удалось сохранить даже минимальный стейт', e2);
+        }
+      }
     }
     function loadState() {
       const saved = localStorage.getItem('mzgram_data');
@@ -1747,7 +1806,6 @@
         return (now - map[uid]) < TYPING_TIMEOUT;
       });
     }
-
     function emitTypingStart() {
       if (!currentUser) return;
       const chatId = currentChatId;
@@ -1761,7 +1819,6 @@
       lastTypingSentTs = now;
       if (socket && isConnected) socket.emit('typing:start', { chatId, userId: currentUser.id });
     }
-
     function scheduleTypingStop() {
       if (typingStopTimer) clearTimeout(typingStopTimer);
       typingStopTimer = setTimeout(() => {
@@ -1773,7 +1830,6 @@
         lastTypingSentTs = 0;
       }, TYPING_TIMEOUT);
     }
-
     function cleanupTypingPeriodic() {
       if (typingCleanupTimer) return;
       typingCleanupTimer = setInterval(() => {
@@ -1794,7 +1850,6 @@
         }
       }, 1000);
     }
-
     function renderTypingIndicator() {
       const existing = messagesArea.querySelector('.typing-row');
       if (existing) existing.remove();
@@ -1818,7 +1873,6 @@
       messagesArea.appendChild(row);
       if (forceScrollBottom) messagesArea.scrollTop = messagesArea.scrollHeight;
     }
-
     function updateChatHeaderTypingStatus() {
       if (!currentChatId) return;
       const chat = getChat(currentChatId);
@@ -1860,6 +1914,41 @@
         return { __error: true, status: err.status, data: err.data };
       }
     }
+
+    // Загрузка файла на сервер multipart/form-data
+    async function uploadFileToServer(file) {
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', SERVER_URL + '/api/upload', true);
+
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const percent = Math.min(90, Math.round((e.loaded / e.total) * 90));
+            showUpload(true, 'Загрузка файла...', percent);
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const data = JSON.parse(xhr.responseText);
+              if (data && data.ok && data.url) resolve(data);
+              else reject(new Error((data && data.error) || 'upload_failed'));
+            } catch (e) { reject(new Error('invalid_response')); }
+          } else {
+            reject(new Error('http_' + xhr.status));
+          }
+        };
+
+        xhr.onerror = () => reject(new Error('network_error'));
+        xhr.onabort = () => reject(new Error('aborted'));
+
+        const form = new FormData();
+        form.append('file', file);
+        xhr.send(form);
+      });
+    }
+
     async function loadFromServer(silent = false) {
       if (!silent) updateSyncIndicator('syncing', 'Синхронизация...');
       try {
@@ -2337,7 +2426,6 @@
             if (m.from !== currentUser.id && currentChatId !== data.chatId) {
               unread[data.chatId] = (unread[data.chatId] || 0) + 1;
             }
-            // Если пришло сообщение от того, кто «печатал» — сбрасываем его typing
             if (typingUsers[data.chatId] && typingUsers[data.chatId][m.from]) {
               delete typingUsers[data.chatId][m.from];
             }
@@ -2392,8 +2480,6 @@
           saveState();
           if (currentChatId === data.chatId) renderMessages(chat);
         });
-
-        // ===== TYPING =====
         socket.on('typing:start', (data) => {
           if (!data || !data.chatId || !data.userId) return;
           if (data.userId === (currentUser && currentUser.id)) return;
@@ -2586,7 +2672,6 @@
         const lastMsg = chat.messages && chat.messages.length ? chat.messages[chat.messages.length - 1] : null;
         let lastText = 'Нет сообщений';
         let isTypingPreview = false;
-        // Приоритет: если кто-то печатает в этом чате — показываем «печатает…»
         const typers = getTypingUsersIn(chat.id);
         if (typers.length > 0) {
           isTypingPreview = true;
@@ -2664,10 +2749,7 @@
       const chat = getChat(chatId);
       if (!chat) return;
       if (chat.type === 'channel') {
-        if (!isChannelSubscriber(chat, currentUser.id)) {
-          openChannelInfo(chatId);
-          return;
-        }
+        if (!isChannelSubscriber(chat, currentUser.id)) { openChannelInfo(chatId); return; }
       } else if (!chat.members.includes(currentUser.id)) return;
       if (draftChat) draftChat = null;
       currentChatId = chatId;
@@ -2675,7 +2757,6 @@
       sortMessages(chat);
       renderChatList();
       forceScrollBottom = true;
-      // Разрешаем анимацию появления сообщений только при заходе в чат
       animateMessagesNextRender = true;
       renderMessages(chat);
       chatPlaceholder.style.display = 'none';
@@ -2746,7 +2827,6 @@
       draftChat = null;
       currentChatId = newChat.id;
       forceScrollBottom = true;
-      // Только что создали — не анимируем, тут только одно сообщение
       animateMessagesNextRender = false;
       renderChatList();
       renderMessages(newChat);
@@ -2765,9 +2845,7 @@
       const row = document.createElement('div');
       row.className = `message-row ${isOwn ? 'own' : 'other'}`;
       if (isChannel) row.className = `message-row other`;
-      // Анимируем только если это разрешено флагом (заход в чат)
       if (animateMessagesNextRender) row.classList.add('animate-in');
-
       const senderAvatar = sender ? resolveUrl(sender.avatar) : null;
       const avatarInner = senderAvatar ? `<img src="${senderAvatar}" alt="">` : escapeHtml(senderName.charAt(0).toUpperCase() || '?');
       const dotActive = senderOnline && !isChannel ? 'active' : '';
@@ -2933,7 +3011,6 @@
       sortMessages(chat);
       chat.messages.forEach(msg => renderSingleMessage(msg, false));
       attachMessageHandlers();
-      // После отрисовки сообщений — сразу рисуем индикатор печати
       renderTypingIndicator();
       if (forceScrollBottom || wasAtBottom) messagesArea.scrollTop = messagesArea.scrollHeight;
       else {
@@ -2941,7 +3018,6 @@
         messagesArea.scrollTop = newScrollHeight - prevClientHeight - distanceFromBottom;
       }
       forceScrollBottom = false;
-      // Сбрасываем флаг: следующие ререндеры (реакции, синк, новые сообщения) без анимации
       animateMessagesNextRender = false;
     }
 
@@ -3061,7 +3137,6 @@
       messageInput.value = '';
       hideMentionSuggestions();
       clearReplyTarget();
-      // Сбрасываем свой «typing» — отправили сообщение
       if (socket && isConnected) socket.emit('typing:stop', { chatId: currentChatId, userId: currentUser.id });
       if (typingStopTimer) { clearTimeout(typingStopTimer); typingStopTimer = null; }
       lastTypingSentTs = 0;
@@ -3160,9 +3235,7 @@
     }
     messageInput.addEventListener('input', (e) => {
       updateMentionSuggestions();
-      // Отправляем typing:start с throttle
       emitTypingStart();
-      // И перезапускаем таймер typing:stop
       scheduleTypingStop();
     });
     messageInput.addEventListener('blur', () => {
@@ -3199,7 +3272,7 @@
           <div id="mediaPickerGrid" style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; max-height:340px; overflow-y:auto; padding:4px; background:#0f1426; border-radius:16px; min-height:120px; align-content:start;"></div>
           <div id="mediaPickerCount" style="margin-top:10px; font-size:13px; color:#7d86b5; text-align:center;">0 файлов</div>
           <label for="mediaPickerCaption" style="display:block; font-size:13px; font-weight:500; color:#b3beea; margin:14px 0 4px 0;">Подпись (необязательно)</label>
-          <input type="text" id="mediaPickerCaption" name="mzgram_media_caption_8" placeholder="Подпись к первому сообщению" autocomplete="off">
+          <input type="text" id="mediaPickerCaption" name="mzgram_media_caption_8" placeholder="Подпись к первому сообщению" autocomplete="off" data-form-type="other">
           <div class="btn-group" style="margin-top:16px;">
             <button class="btn btn-primary ripple-btn" id="mediaPickerSendBtn" type="button"><i class="fas fa-paper-plane"></i> Отправить</button>
             <button class="btn btn-secondary ripple-btn" id="mediaPickerCancelBtn" type="button">Отмена</button>
@@ -3277,43 +3350,69 @@
         await sendOneMediaFile(f, text, targetChatId);
       }
     }
+
+    // Отправка файла: сначала POST /api/upload, потом message:send с URL
     async function sendOneMediaFile(file, text, targetChatId) {
       if (!currentUser) return;
       if (file.size > MAX_MEDIA_SIZE) { alert('Файл слишком большой'); return; }
+
+      // Черновик
       if (draftChat && !currentChatId) {
-        showUpload(true, 'Подготовка...', 20);
+        showUpload(true, 'Загрузка файла...', 5);
         try {
-          const dataUrl = await readFileAsDataURL(file);
-          showUpload(true, 'Отправка...', 70);
-          const kind = getMediaKind(file.type);
-          const media = { kind, name: file.name, size: file.size, mime: file.type || 'application/octet-stream', data: dataUrl };
+          const uploaded = await uploadFileToServer(file);
+          showUpload(true, 'Отправка...', 95);
+          const media = {
+            kind: getMediaKind(uploaded.mime || file.type),
+            url: uploaded.url,
+            name: uploaded.name || file.name,
+            size: uploaded.size || file.size,
+            mime: uploaded.mime || file.type || 'application/octet-stream'
+          };
           const msg = { id: genMessageId(), from: currentUser.id, text: text || '', time: new Date().toISOString(), media, reactions: {} };
           if (replyTarget) msg.replyTo = replyTarget.msg.id;
           draftChat.tempMessages.push(msg);
           clearReplyTarget();
           showUpload(false);
           await commitDraftChat(msg);
-        } catch (err) { alert('Не удалось прочитать файл: ' + err.message); showUpload(false); }
+        } catch (err) {
+          alert('Не удалось загрузить файл: ' + err.message);
+          showUpload(false);
+        }
         return;
       }
+
       const chat = getChat(targetChatId || currentChatId);
       if (!chat) return;
       if (chat.type === 'channel' && !isChannelAdmin(chat, currentUser.id)) {
         showToast('Только администраторы могут публиковать посты');
         return;
       }
-      showUpload(true, 'Подготовка...', 20);
+
+      showUpload(true, 'Загрузка файла...', 5);
       try {
-        const dataUrl = await readFileAsDataURL(file);
-        showUpload(true, 'Отправка...', 70);
-        const kind = getMediaKind(file.type);
-        const media = { kind, name: file.name, size: file.size, mime: file.type || 'application/octet-stream', data: dataUrl };
-        const msg = { id: genMessageId(), from: currentUser.id, text: text || '', time: new Date().toISOString(), media, reactions: {}, __pending: true };
+        const uploaded = await uploadFileToServer(file);
+        showUpload(true, 'Отправка...', 95);
+
+        const media = {
+          kind: getMediaKind(uploaded.mime || file.type),
+          url: uploaded.url,             // <-- только URL, base64 не храним
+          name: uploaded.name || file.name,
+          size: uploaded.size || file.size,
+          mime: uploaded.mime || file.type || 'application/octet-stream'
+        };
+
+        const msg = {
+          id: genMessageId(), from: currentUser.id, text: text || '',
+          time: new Date().toISOString(), media, reactions: {}, __pending: true
+        };
         if (replyTarget) { msg.replyTo = replyTarget.msg.id; clearReplyTarget(); }
         if (chat.type === 'channel') msg.views = 0;
+
         if (!chat.messages) chat.messages = [];
         chat.messages.push(msg);
         sortMessages(chat);
+
         if (chat.type === 'saved') {
           delete msg.__pending;
           saveSavedChats();
@@ -3323,11 +3422,14 @@
           showUpload(false);
           return;
         }
+
         saveState();
         forceScrollBottom = true;
         renderMessages(chat);
         renderChatList();
+
         if (socket && isConnected) socket.emit('message:send', { chatId: chat.id, message: msg });
+
         const result = await apiRequest('PUT', '/api/chats/' + chat.id, {
           id: chat.id, name: chat.name, type: chat.type,
           members: chat.members.slice(),
@@ -3336,12 +3438,17 @@
         });
         if (result && result.__error) { msg.__failed = true; delete msg.__pending; }
         else delete msg.__pending;
+
         saveState();
         if (currentChatId === chat.id) renderMessages(chat);
         renderChatList();
         showUpload(false);
-      } catch (err) { alert('Не удалось прочитать файл: ' + err.message); showUpload(false); }
+      } catch (err) {
+        alert('Не удалось загрузить файл: ' + err.message);
+        showUpload(false);
+      }
     }
+
     function showUpload(show, text = 'Загрузка...', progress = 0) {
       if (show) { uploadIndicator.classList.add('active'); uploadText.textContent = text; uploadBar.style.width = progress + '%'; }
       else { uploadIndicator.classList.remove('active'); uploadBar.style.width = '0%'; }
@@ -3463,11 +3570,7 @@
       if (!currentUser) return;
       const name = chatNameInput.value.trim();
       const type = chatTypeSelect.value;
-      if (!name) {
-        newChatErrorText.textContent = 'Введите название';
-        newChatError.classList.add('show');
-        return;
-      }
+      if (!name) { newChatErrorText.textContent = 'Введите название'; newChatError.classList.add('show'); return; }
       if (type === 'group') {
         const newChat = { id: 'ch' + generateId(), name, type: 'group', members: [currentUser.id], messages: [] };
         chats.push(newChat);
@@ -3766,7 +3869,7 @@
     }
     function closeChannelInfo() { channelInfoModal.classList.remove('active'); channelInfoId = null; }
 
-    // ---------- СВОЙ ПРОФИЛЬ ----------
+    // ---------- ПРОФИЛЬ ----------
     function openProfile() {
       if (!currentUser) return;
       const av = resolveUrl(currentUser.avatar);
