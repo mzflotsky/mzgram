@@ -1,5 +1,5 @@
 // ============================================================
-// Mzgram server — REST API + WebSocket + раздача HTML + медиа
+// Mzgram server — REST API + WebSocket + раздача HTML + медиа + GIF
 // Версия для деплоя на Render/Railway
 // ============================================================
 
@@ -47,8 +47,10 @@ const HTML_FILE = findHtmlFile();
 const MEDIA_DIR = path.join(TMP_DIR, 'server-media');
 const AVATARS_DIR = path.join(MEDIA_DIR, 'avatars');
 const CHANNEL_AVATARS_DIR = path.join(MEDIA_DIR, 'channel-avatars');
+const GIFS_DIR = path.join(MEDIA_DIR, 'gifs');
+const GIFS_FILE = path.join(TMP_DIR, 'mzgram-gifs.json');
 
-[MEDIA_DIR, AVATARS_DIR, CHANNEL_AVATARS_DIR].forEach(dir => {
+[MEDIA_DIR, AVATARS_DIR, CHANNEL_AVATARS_DIR, GIFS_DIR].forEach(dir => {
   try {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
@@ -61,6 +63,7 @@ const CHANNEL_AVATARS_DIR = path.join(MEDIA_DIR, 'channel-avatars');
 
 app.use('/media/avatars', express.static(AVATARS_DIR, { maxAge: '7d' }));
 app.use('/media/channel-avatars', express.static(CHANNEL_AVATARS_DIR, { maxAge: '7d' }));
+app.use('/media/gifs', express.static(GIFS_DIR, { maxAge: '7d' }));
 app.use('/media', express.static(MEDIA_DIR, { maxAge: '7d' }));
 
 function log(...args) {
@@ -235,10 +238,47 @@ const upload = multer({
 });
 
 // ============================================================
-// ХРАНИЛИЩЕ (in-memory + persist в tmp)
+// MULTER — загрузка GIF
+// ============================================================
+const gifStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, GIFS_DIR),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.gif';
+    const name = `gif_${Date.now()}_${crypto.randomBytes(4).toString('hex')}${ext}`;
+    cb(null, name);
+  }
+});
+const uploadGif = multer({
+  storage: gifStorage,
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const okMime = /^image\/(gif|webp|png|jpeg|jpg)$/i.test(file.mimetype);
+    if (okMime) cb(null, true);
+    else cb(new Error('invalid_gif_mime'));
+  }
+});
+
+// ============================================================
+// ХРАНИЛИЩЕ
 // ============================================================
 let accounts = [];
 let chats = [];
+let gifs = [];
+
+function loadGifs() {
+  try {
+    if (fs.existsSync(GIFS_FILE)) {
+      const raw = fs.readFileSync(GIFS_FILE, 'utf8');
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr : [];
+    }
+  } catch (e) { log('Ошибка чтения gifs.json:', e.message); }
+  return [];
+}
+function saveGifs(arr) {
+  try { fs.writeFileSync(GIFS_FILE, JSON.stringify(arr, null, 2)); }
+  catch (e) { log('Ошибка сохранения gifs.json:', e.message); }
+}
 
 function loadData() {
   try {
@@ -332,6 +372,8 @@ function loadData() {
     accounts = [];
     chats = [];
   }
+  gifs = loadGifs();
+  log(`Загружено GIF: ${gifs.length}`);
 }
 function persist() {
   try {
@@ -371,16 +413,55 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
   });
 });
 
+// ============================================================
+// GIF-БИБЛИОТЕКА
+// ============================================================
+app.get('/api/gifs', (req, res) => {
+  res.json(gifs);
+});
+
+app.post('/api/gifs/upload', uploadGif.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ ok: false, error: 'no_file' });
+  const url = `/media/gifs/${req.file.filename}`;
+  const entry = {
+    id: 'gif_' + Date.now().toString(36) + crypto.randomBytes(3).toString('hex'),
+    url,
+    name: req.file.originalname || 'gif',
+    size: req.file.size,
+    mime: req.file.mimetype,
+    addedBy: req.body.userId || null,
+    addedAt: Date.now()
+  };
+  gifs.unshift(entry);
+  if (gifs.length > 300) gifs = gifs.slice(0, 300);
+  saveGifs(gifs);
+  io.emit('gifs:updated', gifs);
+  log(`Загружена GIF: ${url} (${req.file.size} байт)`);
+  res.json({ ok: true, gif: entry });
+});
+
+app.post('/api/gifs/:id/delete', (req, res) => {
+  const id = req.params.id;
+  const idx = gifs.findIndex(g => g.id === id);
+  if (idx < 0) return res.status(404).json({ ok: false, error: 'not_found' });
+  gifs.splice(idx, 1);
+  saveGifs(gifs);
+  io.emit('gifs:updated', gifs);
+  res.json({ ok: true });
+});
+
 // Health-check для Render
 app.get('/api/status', (req, res) => {
   res.json({
     ok: true,
     accounts: accounts.length,
     chats: chats.length,
+    gifs: gifs.length,
     uptime: Math.round(process.uptime()),
     clients: io.engine.clientsCount,
     dataFileSize: fs.existsSync(DATA_FILE) ? fs.statSync(DATA_FILE).size : 0,
     mediaCount: fs.existsSync(MEDIA_DIR) ? fs.readdirSync(MEDIA_DIR).length : 0,
+    gifsCount: fs.existsSync(GIFS_DIR) ? fs.readdirSync(GIFS_DIR).length : 0,
     htmlFile: HTML_FILE,
     tmpDir: TMP_DIR
   });
@@ -503,7 +584,8 @@ app.post('/api/accounts/reset-password', (req, res) => {
 app.get('/api/version', (req, res) => {
   const data = JSON.stringify({
     a: accounts.length,
-    c: chats.map(c => ({ id: c.id, m: (c.messages||[]).length, u: c.updatedAt || 0 }))
+    c: chats.map(c => ({ id: c.id, m: (c.messages||[]).length, u: c.updatedAt || 0 })),
+    g: gifs.length
   });
   const hash = crypto.createHash('md5').update(data).digest('hex');
   res.json({ v: hash });
@@ -716,10 +798,8 @@ io.on('connection', (socket) => {
         persist();
       }
     }
-    // ВАЖНО: io.to вместо socket.to, чтобы отправитель тоже получил эхо
-    // (на клиенте есть защита от дубликата через проверку id).
-    // Это критично для счётчиков непрочитанных в группах и каналах,
-    // когда клиент не был подписан на комнату chat:join.
+    // io.to — рассылаем всем в комнате, включая отправителя.
+    // Клиент защищён проверкой id, дубликата не будет.
     io.to(chatId).emit('message:new', { chatId, message });
   });
 
@@ -821,8 +901,9 @@ server.listen(PORT, '0.0.0.0', () => {
   log(`  HTML: ${HTML_FILE}`);
   log(`  Данные: ${DATA_FILE}`);
   log(`  Медиа: ${MEDIA_DIR}`);
+  log(`  GIF-библиотека: ${GIFS_DIR} (${gifs.length} шт.)`);
   log('========================================');
 });
 
-process.on('SIGINT', () => { persist(); process.exit(0); });
-process.on('SIGTERM', () => { persist(); process.exit(0); });
+process.on('SIGINT', () => { persist(); saveGifs(gifs); process.exit(0); });
+process.on('SIGTERM', () => { persist(); saveGifs(gifs); process.exit(0); });
