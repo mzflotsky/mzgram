@@ -729,7 +729,7 @@ io.on('connection', (socket) => {
 });
 
 loadData();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
   log('========================================');
   log(`  Mzgram server запущен на порту ${PORT}`);
