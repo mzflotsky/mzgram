@@ -135,7 +135,7 @@ function generateChannelLoginFromName(name) {
   return base;
 }
 
-// ---------- МЕДИА (сохранение из data URL — legacy + миграция) ----------
+// ---------- МЕДИА (из data URL — legacy + миграция) ----------
 function saveMediaFromDataUrl(dataUrl, prefix = 'file') {
   if (typeof dataUrl !== 'string') return null;
   const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
@@ -716,7 +716,11 @@ io.on('connection', (socket) => {
         persist();
       }
     }
-    socket.to(chatId).emit('message:new', { chatId, message });
+    // ВАЖНО: io.to вместо socket.to, чтобы отправитель тоже получил эхо
+    // (на клиенте есть защита от дубликата через проверку id).
+    // Это критично для счётчиков непрочитанных в группах и каналах,
+    // когда клиент не был подписан на комнату chat:join.
+    io.to(chatId).emit('message:new', { chatId, message });
   });
 
   socket.on('message:react', ({ chatId, messageId, emoji, userId, action }) => {
