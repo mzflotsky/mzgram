@@ -1,6 +1,6 @@
 // ============================================================
 // Mzgram server — REST API + WebSocket + раздача HTML + медиа
-// Порт 3000
+// Версия для деплоя на Render/Railway
 // ============================================================
 
 const express = require('express');
@@ -9,6 +9,7 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const crypto = require('crypto');
 
 const app = express();
@@ -23,17 +24,39 @@ const io = new Server(server, {
   pingTimeout: 20000
 });
 
-const DATA_FILE = path.join(__dirname, 'data.json');
-const LOG_FILE  = path.join(__dirname, 'mzgram.log');
-const HTML_FILE = path.join(__dirname, 'Mzgram.html');
-const MEDIA_DIR = path.join(__dirname, 'server-media');
+// ---------- ПУТИ (адаптированы под Render) ----------
+const TMP_DIR = os.tmpdir();
+
+// Ищем Mzgram.html в нескольких местах
+function findHtmlFile() {
+  const candidates = [
+    path.join(__dirname, 'Mzgram.html'),
+    path.join(__dirname, 'index.html'),
+    path.join(__dirname, '..', 'frontend', 'index.html'),
+    path.join(__dirname, 'frontend', 'index.html')
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  return candidates[0];
+}
+
+const DATA_FILE = path.join(TMP_DIR, 'mzgram-data.json');
+const LOG_FILE  = path.join(TMP_DIR, 'mzgram.log');
+const HTML_FILE = findHtmlFile();
+const MEDIA_DIR = path.join(TMP_DIR, 'server-media');
 const AVATARS_DIR = path.join(MEDIA_DIR, 'avatars');
 const CHANNEL_AVATARS_DIR = path.join(MEDIA_DIR, 'channel-avatars');
 
+// Создаём папки в tmp (там точно есть права на запись)
 [MEDIA_DIR, AVATARS_DIR, CHANNEL_AVATARS_DIR].forEach(dir => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-    console.log(`Создана папка: ${dir}`);
+  try {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+      console.log(`Создана папка: ${dir}`);
+    }
+  } catch (e) {
+    console.error(`Не удалось создать папку ${dir}:`, e.message);
   }
 });
 
@@ -86,7 +109,6 @@ function validateLogin(login) {
   const lower = login.toLowerCase().trim();
   return LOGIN_REGEX.test(lower) ? lower : null;
 }
-// Логин канала: с @ или без — приводим к чистому виду
 function validateChannelLogin(login) {
   if (typeof login !== 'string') return null;
   const clean = login.replace(/^@/, '').toLowerCase().trim();
@@ -105,7 +127,6 @@ function toIsoUtc(t) {
 function generateMessageId() { return 'm' + Date.now().toString(36) + crypto.randomBytes(4).toString('hex'); }
 function generateUserId() { return 'u' + Date.now().toString(36) + crypto.randomBytes(4).toString('hex'); }
 function generateChannelLoginFromName(name) {
-  // Из имени делаем логин: убираем всё кроме a-z0-9_- и заменяем пробелы на _
   let base = String(name || 'channel').toLowerCase()
     .replace(/[^a-z0-9_\-]/g, '_')
     .replace(/_+/g, '_')
@@ -124,8 +145,13 @@ function saveMediaFromDataUrl(dataUrl, prefix = 'file') {
   const buffer = Buffer.from(match[2], 'base64');
   const ext = getExtensionFromMime(mime);
   const filename = `${prefix}_${Date.now()}_${crypto.randomBytes(4).toString('hex')}${ext}`;
-  fs.writeFileSync(path.join(MEDIA_DIR, filename), buffer);
-  return `/media/${filename}`;
+  try {
+    fs.writeFileSync(path.join(MEDIA_DIR, filename), buffer);
+    return `/media/${filename}`;
+  } catch (e) {
+    log('Ошибка сохранения медиа:', e.message);
+    return null;
+  }
 }
 function saveAvatarFromDataUrl(dataUrl) {
   if (typeof dataUrl !== 'string') return null;
@@ -134,8 +160,13 @@ function saveAvatarFromDataUrl(dataUrl) {
   const buffer = Buffer.from(match[2], 'base64');
   const ext = getExtensionFromMime(match[1]);
   const filename = `avatar_${Date.now()}_${crypto.randomBytes(4).toString('hex')}${ext}`;
-  fs.writeFileSync(path.join(AVATARS_DIR, filename), buffer);
-  return `/media/avatars/${filename}`;
+  try {
+    fs.writeFileSync(path.join(AVATARS_DIR, filename), buffer);
+    return `/media/avatars/${filename}`;
+  } catch (e) {
+    log('Ошибка сохранения аватара:', e.message);
+    return null;
+  }
 }
 function saveChannelAvatarFromDataUrl(dataUrl) {
   if (typeof dataUrl !== 'string') return null;
@@ -144,8 +175,13 @@ function saveChannelAvatarFromDataUrl(dataUrl) {
   const buffer = Buffer.from(match[2], 'base64');
   const ext = getExtensionFromMime(match[1]);
   const filename = `channel_${Date.now()}_${crypto.randomBytes(4).toString('hex')}${ext}`;
-  fs.writeFileSync(path.join(CHANNEL_AVATARS_DIR, filename), buffer);
-  return `/media/channel-avatars/${filename}`;
+  try {
+    fs.writeFileSync(path.join(CHANNEL_AVATARS_DIR, filename), buffer);
+    return `/media/channel-avatars/${filename}`;
+  } catch (e) {
+    log('Ошибка сохранения аватара канала:', e.message);
+    return null;
+  }
 }
 function getExtensionFromMime(mime) {
   const map = {
@@ -184,7 +220,7 @@ function processIncomingMessages(messages) {
 }
 
 // ============================================================
-// ХРАНИЛИЩЕ
+// ХРАНИЛИЩЕ (in-memory + persist в tmp)
 // ============================================================
 let accounts = [];
 let chats = [];
@@ -213,7 +249,6 @@ function loadData() {
 
       let mMedia = 0, mIds = 0, mChannels = 0, mChannelLogins = 0, mPublicFlags = 0;
       const usedChannelLogins = new Set();
-      // Первый проход — собрать уже существующие логины каналов
       chats.forEach(c => {
         if (c.type === 'channel' && c.channelMeta && c.channelMeta.login) {
           usedChannelLogins.add(c.channelMeta.login);
@@ -240,7 +275,6 @@ function loadData() {
             c.channelMeta.isPublic = false;
             mPublicFlags++;
           }
-          // Если нет логина — сгенерируем из имени
           if (!c.channelMeta.login) {
             let base = generateChannelLoginFromName(c.name);
             let candidate = base;
@@ -274,10 +308,14 @@ function loadData() {
       log(`Загружено: аккаунтов=${accounts.length}, чатов=${chats.length}`);
     } else {
       log('data.json не найден — стартуем с пустой базы');
-      fs.writeFileSync(DATA_FILE, JSON.stringify({ accounts: [], chats: [] }, null, 2));
+      accounts = [];
+      chats = [];
+      persist();
     }
   } catch (err) {
     log('ОШИБКА загрузки:', err.message);
+    accounts = [];
+    chats = [];
   }
 }
 function persist() {
@@ -291,11 +329,30 @@ function persist() {
 // ============================================================
 app.get('/', (req, res) => {
   if (fs.existsSync(HTML_FILE)) res.sendFile(HTML_FILE);
-  else res.status(500).send('Mzgram.html не найден');
+  else res.status(500).send('Mzgram.html не найден. Проверьте, что файл лежит рядом с server.js или в frontend/index.html');
 });
 app.get('/Mzgram.html', (req, res) => {
   if (fs.existsSync(HTML_FILE)) res.sendFile(HTML_FILE);
   else res.status(404).send('Не найдено');
+});
+app.get('/index.html', (req, res) => {
+  if (fs.existsSync(HTML_FILE)) res.sendFile(HTML_FILE);
+  else res.status(404).send('Не найдено');
+});
+
+// Health-check для Render
+app.get('/api/status', (req, res) => {
+  res.json({
+    ok: true,
+    accounts: accounts.length,
+    chats: chats.length,
+    uptime: Math.round(process.uptime()),
+    clients: io.engine.clientsCount,
+    dataFileSize: fs.existsSync(DATA_FILE) ? fs.statSync(DATA_FILE).size : 0,
+    mediaCount: fs.existsSync(MEDIA_DIR) ? fs.readdirSync(MEDIA_DIR).length : 0,
+    htmlFile: HTML_FILE,
+    tmpDir: TMP_DIR
+  });
 });
 
 // ============================================================
@@ -429,14 +486,12 @@ app.put('/api/chats/:id', (req, res) => {
   const oldChat = idx >= 0 ? chats[idx] : null;
   const incoming = { id, ...req.body };
 
-  // Валидация логина канала и публичности
   if (incoming.type === 'channel' && incoming.channelMeta) {
     if (incoming.channelMeta.login) {
       const cleanLogin = validateChannelLogin(incoming.channelMeta.login);
       if (!cleanLogin) {
         return res.status(400).json({ ok: false, error: 'invalid_channel_login' });
       }
-      // Проверка уникальности
       const taken = chats.some(c => c.id !== id && c.type === 'channel' && c.channelMeta && c.channelMeta.login === cleanLogin);
       if (taken) {
         return res.status(409).json({ ok: false, error: 'channel_login_taken' });
@@ -446,7 +501,6 @@ app.put('/api/chats/:id', (req, res) => {
     if (typeof incoming.channelMeta.isPublic === 'undefined') {
       incoming.channelMeta.isPublic = false;
     }
-    // Обработка аватара канала, если пришёл data-URL
     if (incoming.channelMeta.avatar && typeof incoming.channelMeta.avatar === 'string' && incoming.channelMeta.avatar.startsWith('data:')) {
       const url = saveChannelAvatarFromDataUrl(incoming.channelMeta.avatar);
       if (url) incoming.channelMeta.avatar = url;
@@ -481,9 +535,6 @@ app.put('/api/chats/:id', (req, res) => {
 
   if (membersChanged || nameOrTypeChanged || channelMetaChanged) {
     io.emit('chat:updated', incoming);
-    log(`PUT /api/chats/${id} → broadcast`);
-  } else {
-    log(`PUT /api/chats/${id} → без broadcast`);
   }
   res.json({ ok: true });
 });
@@ -496,8 +547,6 @@ app.delete('/api/chats/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-// Найти канал по логину (для поиска и для @-упоминаний)
-// Публичные каналы видны всем, приватные — только подписчикам
 app.get('/api/channels/by-login/:login', (req, res) => {
   const cleanLogin = validateChannelLogin(req.params.login);
   if (!cleanLogin) return res.status(400).json({ ok: false, error: 'invalid_login' });
@@ -526,7 +575,6 @@ app.get('/api/channels/by-login/:login', (req, res) => {
   res.json({ ok: true, channel });
 });
 
-// Публичный поиск каналов (только публичные)
 app.get('/api/channels/search', (req, res) => {
   const q = String(req.query.q || '').toLowerCase().trim();
   if (!q) return res.json([]);
@@ -549,7 +597,6 @@ app.get('/api/channels/search', (req, res) => {
   res.json(found);
 });
 
-// Инкремент просмотров
 app.post('/api/chats/:id/messages/:msgId/view', (req, res) => {
   const { id, msgId } = req.params;
   const chat = chats.find(c => c.id === id);
@@ -563,7 +610,6 @@ app.post('/api/chats/:id/messages/:msgId/view', (req, res) => {
   res.json({ ok: true, views: msg.views });
 });
 
-// Привязка группы
 app.post('/api/channels/:id/link-group', (req, res) => {
   const channelId = req.params.id;
   const { groupId } = req.body || {};
@@ -597,15 +643,6 @@ app.post('/api/channels/:id/unlink-group', (req, res) => {
   res.json({ ok: true });
 });
 
-app.get('/api/status', (req, res) => {
-  res.json({
-    ok: true, accounts: accounts.length, chats: chats.length,
-    uptime: Math.round(process.uptime()), clients: io.engine.clientsCount,
-    dataFileSize: fs.existsSync(DATA_FILE) ? fs.statSync(DATA_FILE).size : 0,
-    mediaCount: fs.readdirSync(MEDIA_DIR).length
-  });
-});
-
 // ============================================================
 // WEBSOCKET
 // ============================================================
@@ -628,7 +665,6 @@ io.on('connection', (socket) => {
       if (!exists) {
         chat.messages.push(message);
         chat.updatedAt = Date.now();
-        // Пересылка в привязанную группу
         if (chat.type === 'channel' && chat.channelMeta && chat.channelMeta.linkedGroupId) {
           const group = chats.find(c => c.id === chat.channelMeta.linkedGroupId);
           if (group) {
@@ -670,69 +706,4 @@ io.on('connection', (socket) => {
 
   socket.on('message:read', ({ chatId, messageId, userId }) => {
     if (!chatId || !messageId || !userId) return;
-    const chat = chats.find(c => c.id === chatId);
-    if (chat && Array.isArray(chat.messages)) {
-      const msg = chat.messages.find(m => m.id === messageId);
-      if (msg) {
-        if (!msg.readBy) msg.readBy = {};
-        msg.readBy[userId] = Date.now();
-        persist();
-      }
-    }
-    socket.to(chatId).emit('message:read', { chatId, messageId, userId, time: Date.now() });
-  });
-
-  socket.on('message:viewed', ({ chatId, messageId }) => {
-    if (!chatId || !messageId) return;
-    const chat = chats.find(c => c.id === chatId);
-    if (chat && chat.type === 'channel' && chat.messages) {
-      const msg = chat.messages.find(m => m.id === messageId);
-      if (msg) {
-        msg.views = (msg.views || 0) + 1;
-        chat.updatedAt = Date.now();
-        persist();
-        socket.to(chatId).emit('message:viewed', { chatId, messageId, views: msg.views });
-      }
-    }
-  });
-
-  socket.on('channel:subscribe', ({ channelId, userId }) => {
-    if (!channelId || !userId) return;
-    const channel = chats.find(c => c.id === channelId && c.type === 'channel');
-    if (!channel) return;
-    if (!channel.channelMeta) channel.channelMeta = { admins: [], subscribers: [], linkedGroupId: null, avatar: null, login: null, isPublic: false };
-    if (!channel.channelMeta.subscribers.includes(userId)) {
-      channel.channelMeta.subscribers.push(userId);
-      if (!channel.members.includes(userId)) channel.members.push(userId);
-      persist();
-      io.emit('chat:updated', channel);
-    }
-  });
-  socket.on('channel:unsubscribe', ({ channelId, userId }) => {
-    if (!channelId || !userId) return;
-    const channel = chats.find(c => c.id === channelId && c.type === 'channel');
-    if (!channel) return;
-    if (channel.channelMeta && channel.channelMeta.subscribers) {
-      channel.channelMeta.subscribers = channel.channelMeta.subscribers.filter(u => u !== userId);
-      channel.members = channel.members.filter(u => u !== userId);
-      persist();
-      io.emit('chat:updated', channel);
-    }
-  });
-
-  socket.on('user:online', ({ userId }) => {
-    socket.broadcast.emit('user:online', { userId });
-    socket.broadcast.emit('user:heartbeat', { userId });
-  });
-  socket.on('user:offline', ({ userId }) => { socket.broadcast.emit('user:offline', { userId }); });
-  socket.on('disconnect', (reason) => { log(`WS disconnect: ${socket.id} (${reason})`); });
-});
-
-loadData();
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => {
-  log('========================================');
-  log(`  Mzgram server запущен на порту ${PORT}`);
-  log('========================================');
-});
-process.on('SIGINT', () => { persist(); process.exit(0); });
+    const chat = chats.find(c => c.id === chatId
