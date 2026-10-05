@@ -240,6 +240,7 @@
     .saved-empty p { font-size: 14px; max-width: 320px; }
 
     .message-row { display: flex; align-items: flex-end; gap: 8px; max-width: 80%; position: relative; }
+    .message-row:has(.message-with-media) { max-width: 92%; }
     .message-row.animate-in { animation: floatIn 0.28s ease; }
     .message-row.own { align-self: flex-end; flex-direction: row-reverse; }
     .message-row.other { align-self: flex-start; }
@@ -329,60 +330,91 @@
     .message.own .msg-forwarded-badge { color: #7dd3fc; }
 
     /* ======== МЕДИА В СООБЩЕНИЯХ ======== */
-    .message .media-wrap { margin: 4px 0 6px 0; border-radius: 12px; overflow: hidden; max-width: 340px; background: #0e111d; }
-    .message .media-wrap img { display: block; max-width: 100%; max-height: 320px; border-radius: 12px; }
+    .message .media-wrap { margin: 2px 0 4px 0; border-radius: 10px; overflow: hidden; max-width: 100%; background: #0e111d; }
+    .message .media-wrap img { display: block; max-width: 100%; max-height: 420px; border-radius: 10px; }
     .message .media-wrap audio { display: block; width: 100%; margin: 4px 0; }
 
-    /* Новый вид видео: с превью, кнопкой play и без рывков */
+    /* Если сообщение содержит ТОЛЬКО видео без текста — уменьшаем отступы */
+    .message.message-with-media {
+      padding: 3px;
+      overflow: hidden;
+    }
+    .message.message-with-media .msg-text {
+      padding: 6px 12px 4px 12px;
+    }
+    .message.message-with-media .msg-meta {
+      padding: 2px 12px 4px 12px;
+    }
+    .message.message-with-media .msg-author,
+    .message.message-with-media .msg-forwarded-badge,
+    .message.message-with-media .msg-reply-quote {
+      margin-left: 10px;
+      margin-right: 10px;
+      margin-top: 6px;
+    }
+
+    /* Большой плеер: занимает всю ширину сообщения */
     .message .video-wrap {
       position: relative;
       display: block;
       width: 100%;
-      max-width: 320px;
-      aspect-ratio: 16 / 9;      /* переопределяется через JS после loadedmetadata */
+      max-width: 100%;
+      min-width: 200px;
+      aspect-ratio: 16 / 9;
       background: #000 center/cover no-repeat;
-      border-radius: 12px;
+      border-radius: 8px;
       overflow: hidden;
       cursor: pointer;
       user-select: none;
       contain: layout paint;
     }
+    .message.own .video-wrap { border-radius: 8px; }
     .message .video-wrap video {
       display: block;
       width: 100%;
       height: 100%;
-      object-fit: contain;
+      object-fit: cover;
       background: #000;
-      border-radius: 12px;
+      border-radius: 8px;
     }
     .message .video-wrap .video-poster {
       position: absolute; inset: 0;
-      background-size: cover; background-position: center;
-      border-radius: 12px;
+      background: #141a30 center/cover no-repeat;
+      border-radius: 8px;
       pointer-events: none;
     }
     .message .video-wrap .video-play-btn {
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      width: 56px; height: 56px; border-radius: 50%;
-      background: rgba(0,0,0,0.55);
-      border: 2px solid rgba(255,255,255,0.85);
-      color: #fff; font-size: 20px;
+      width: 64px; height: 64px; border-radius: 50%;
+      background: rgba(0,0,0,0.6);
+      border: 2px solid rgba(255,255,255,0.9);
+      color: #fff; font-size: 24px;
       display: flex; align-items: center; justify-content: center;
       padding-left: 4px;
       transition: 0.2s;
       pointer-events: none;
     }
-    .message .video-wrap:hover .video-play-btn { transform: translate(-50%, -50%) scale(1.1); background: rgba(109, 95, 208, 0.85); }
+    .message .video-wrap:hover .video-play-btn { transform: translate(-50%, -50%) scale(1.12); background: rgba(109, 95, 208, 0.9); }
     .message .video-wrap.playing .video-poster,
     .message .video-wrap.playing .video-play-btn { display: none; }
     .message .video-wrap .video-duration-badge {
       position: absolute; bottom: 8px; right: 8px;
-      background: rgba(0,0,0,0.7); color: #fff;
-      padding: 2px 8px; border-radius: 8px;
+      background: rgba(0,0,0,0.75); color: #fff;
+      padding: 3px 8px; border-radius: 8px;
       font-size: 11px; font-weight: 600;
       pointer-events: none;
     }
     .message .video-wrap.playing .video-duration-badge { display: none; }
+    .message .video-wrap .video-expand-btn {
+      position: absolute; top: 8px; right: 8px;
+      width: 32px; height: 32px; border-radius: 50%;
+      background: rgba(0,0,0,0.6); color: #fff;
+      border: none; cursor: pointer;
+      display: none; align-items: center; justify-content: center;
+      font-size: 13px; transition: 0.15s;
+    }
+    .message .video-wrap.playing:hover .video-expand-btn { display: flex; }
+    .message .video-wrap .video-expand-btn:hover { background: rgba(109, 95, 208, 0.9); transform: scale(1.08); }
 
     .message .media-file { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #0e111d; border-radius: 12px; text-decoration: none; color: #c8d0f0; transition: 0.15s; }
     .message .media-file:hover { background: #141a30; transform: translateY(-1px); }
@@ -510,6 +542,102 @@
     .input-area .send-btn:hover { background: #7b6cf0; transform: scale(1.06) rotate(8deg); box-shadow: 0 6px 20px #4a3bb099; }
     .input-area .send-btn:active { transform: scale(0.92) rotate(8deg); }
     .input-area .send-btn.sending { animation: glowPulse 1s infinite; }
+
+    /* ============ GIF-ПАНЕЛЬ ============ */
+    .gif-panel {
+      position: absolute; bottom: 100%; left: 12px; right: 12px; margin-bottom: 8px;
+      background: #171e30; border: 1px solid #3b4170; border-radius: 16px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.8);
+      display: none; z-index: 120;
+      flex-direction: column;
+      max-height: 420px;
+      overflow: hidden;
+    }
+    .gif-panel.active { display: flex; animation: fadeInUp 0.18s ease; }
+    .gif-panel .gp-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 12px;
+      border-bottom: 1px solid #2f3760;
+    }
+    .gif-panel .gp-title {
+      font-size: 13px; font-weight: 600; color: #c8d0f0;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .gif-panel .gp-title i { color: #a78bfa; }
+    .gif-panel .gp-search {
+      flex: 1; background: #0f1426; border: 1px solid #2f3760; border-radius: 40px;
+      padding: 6px 12px; color: #e6edff; font-size: 13px; outline: none;
+      min-width: 0;
+    }
+    .gif-panel .gp-search:focus { border-color: #8b7cf7; box-shadow: 0 0 0 2px #3d3570; }
+    .gif-panel .gp-upload-btn {
+      background: #232b4a; border: 1px solid #3b4170; color: #b2c0f0;
+      padding: 6px 10px; border-radius: 40px; cursor: pointer;
+      font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 4px;
+      transition: 0.15s; flex-shrink: 0;
+    }
+    .gif-panel .gp-upload-btn:hover { background: #2c3760; color: #e5ebff; }
+    .gif-panel .gp-close {
+      background: transparent; border: none; color: #7a86b5;
+      cursor: pointer; padding: 4px 8px; border-radius: 50%; font-size: 14px;
+      transition: 0.15s; flex-shrink: 0;
+    }
+    .gif-panel .gp-close:hover { color: #e06b8a; transform: rotate(90deg); }
+    .gif-panel .gp-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: 6px;
+      padding: 10px;
+      overflow-y: auto;
+      background: #121624;
+    }
+    .gif-panel .gp-grid::-webkit-scrollbar { width: 5px; }
+    .gif-panel .gp-grid::-webkit-scrollbar-track { background: #191e30; }
+    .gif-panel .gp-grid::-webkit-scrollbar-thumb { background: #4f4f8a; border-radius: 20px; }
+    .gif-panel .gp-item {
+      position: relative;
+      aspect-ratio: 1 / 1;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #0e111d;
+      cursor: pointer;
+      transition: 0.15s;
+      border: 1px solid #2f3760;
+    }
+    .gif-panel .gp-item:hover { transform: scale(1.03); border-color: #6d5fd0; box-shadow: 0 4px 16px #6d5fd055; }
+    .gif-panel .gp-item img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+      pointer-events: none;
+    }
+    .gif-panel .gp-item .gp-item-actions {
+      position: absolute; top: 4px; right: 4px;
+      display: flex; gap: 4px;
+      opacity: 0;
+      transition: 0.15s;
+    }
+    .gif-panel .gp-item:hover .gp-item-actions { opacity: 1; }
+    .gif-panel .gp-item .gp-item-btn {
+      width: 24px; height: 24px; border-radius: 50%;
+      background: rgba(0,0,0,0.7); color: #fff;
+      border: none; cursor: pointer; font-size: 11px;
+      display: flex; align-items: center; justify-content: center;
+      transition: 0.15s;
+    }
+    .gif-panel .gp-item .gp-item-btn:hover { background: rgba(109, 95, 208, 0.9); transform: scale(1.1); }
+    .gif-panel .gp-item .gp-item-btn.delete:hover { background: rgba(224, 107, 138, 0.9); }
+    .gif-panel .gp-empty {
+      grid-column: 1 / -1;
+      padding: 40px 20px; text-align: center; color: #6f7bb5; font-size: 13px;
+    }
+    .gif-panel .gp-empty i { font-size: 36px; opacity: 0.4; display: block; margin-bottom: 10px; }
+
+    /* Компактный вид GIF в чате */
+    .message .media-wrap.gif-media { max-width: 100%; }
+    .message .media-wrap.gif-media img {
+      max-height: 320px;
+      width: 100%;
+      object-fit: cover;
+    }
 
     .channel-readonly-note {
       display: none; align-items: center; gap: 10px;
@@ -801,9 +929,12 @@
       .chat-header-actions .back-btn { display: flex; align-items: center; justify-content: center; }
       .account-badge { max-width: 150px; }
       .message-row { max-width: 88%; }
+      .message-row:has(.message-with-media) { max-width: 96%; }
       .sync-indicator { display: none; }
       .upload-indicator { bottom: 80px; }
       .notif-toast-container { top: 8px; right: 8px; left: 8px; max-width: none; }
+      .gif-panel { max-height: 320px; }
+      .gif-panel .gp-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
     }
     @media (max-width: 400px) {
       .brand span { font-size: 18px; }
@@ -863,7 +994,19 @@
       </div>
       <div class="messages-area" id="messagesArea" style="display: none;"></div>
       <button class="scroll-down-btn" id="scrollDownBtn"><i class="fas fa-arrow-down"></i> <span id="scrollDownText">Вниз</span></button>
+
       <div class="input-area" id="inputArea" style="display: none;">
+        <!-- GIF-панель -->
+        <div class="gif-panel" id="gifPanel">
+          <div class="gp-header">
+            <span class="gp-title"><i class="fas fa-film"></i> GIF-библиотека</span>
+            <input type="text" class="gp-search" id="gifSearch" placeholder="Поиск..." />
+            <button class="gp-upload-btn" id="gifUploadBtn"><i class="fas fa-plus"></i> Загрузить</button>
+            <button class="gp-close" id="gifPanelClose"><i class="fas fa-times"></i></button>
+          </div>
+          <div class="gp-grid" id="gifGrid"></div>
+        </div>
+
         <div class="reply-bar" id="replyBar">
           <div class="rb-info">
             <div class="rb-name" id="replyBarName">Имя</div>
@@ -873,8 +1016,12 @@
         </div>
         <div class="input-row">
           <input type="file" id="fileInput" style="display: none;" />
+          <input type="file" id="gifUploadInput" accept="image/gif,image/webp,image/png,image/jpeg" style="display: none;" />
           <div class="mention-suggestions" id="mentionSuggestions"></div>
+
+          <button class="attach-btn" id="gifBtn" title="GIF-библиотека"><i class="fas fa-film"></i></button>
           <button class="attach-btn" id="attachBtn" title="Прикрепить медиа"><i class="fas fa-paperclip"></i></button>
+
           <input type="text" id="messageInput" name="mzgram_msg_9a3d"
                  placeholder="Сообщение..."
                  autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
@@ -1299,9 +1446,7 @@
 
     let forceScrollBottom = false;
     let animateMessagesNextRender = false;
-    // Позиция скролла до перерисовки
-    let scrollAnchor = null; // { msgId, offsetTop }
-    // Считаем новые сообщения, пока пользователь не внизу
+    let scrollAnchor = null;
     let pendingScrollDownCount = 0;
 
     let typingUsers = {};
@@ -1312,8 +1457,10 @@
     let notifSettings = { global: true, mutedChats: {} };
     let viewedPosts = new Set();
 
-    // Список чатов, на которые текущий пользователь уже подписался через chat:join
     const joinedChats = new Set();
+
+    let gifLibrary = [];
+    let gifFilter = '';
 
     // ---------- DOM ----------
     const currentAccountNameSpan = document.getElementById('currentAccountName');
@@ -1355,6 +1502,14 @@
     const forwardCancelBtn = document.getElementById('forwardCancelBtn');
     const scrollDownBtn = document.getElementById('scrollDownBtn');
     const scrollDownText = document.getElementById('scrollDownText');
+
+    const gifBtn = document.getElementById('gifBtn');
+    const gifPanel = document.getElementById('gifPanel');
+    const gifGrid = document.getElementById('gifGrid');
+    const gifSearch = document.getElementById('gifSearch');
+    const gifUploadBtn = document.getElementById('gifUploadBtn');
+    const gifUploadInput = document.getElementById('gifUploadInput');
+    const gifPanelClose = document.getElementById('gifPanelClose');
 
     const authModal = document.getElementById('authModal');
     const loginInput = document.getElementById('loginInput');
@@ -1697,7 +1852,6 @@
       }
       try { unread = JSON.parse(localStorage.getItem('mzgram_unread') || '{}'); }
       catch (e) { unread = {}; }
-      // Чистим unread для чатов, которых нет
       const validIds = new Set(chats.map(c => c.id));
       Object.keys(unread).forEach(k => { if (!validIds.has(k)) delete unread[k]; });
       loadSavedChats();
@@ -1992,7 +2146,6 @@
     function captureScrollAnchor() {
       if (!messagesArea) return null;
       if (isNearBottom()) return null;
-      // Ищем первое видимое сообщение
       const msgEls = messagesArea.querySelectorAll('.message[data-msg-id]');
       const containerTop = messagesArea.getBoundingClientRect().top;
       for (const el of msgEls) {
@@ -2137,7 +2290,6 @@
       catch (err) { updateSyncIndicator('offline', 'Ошибка синхронизации'); }
     }
 
-    // Подписать сокет на все чаты, где пользователь состоит
     function joinAllMyChats() {
       if (!socket || !isConnected || !currentUser) return;
       chats.forEach(c => {
@@ -2358,7 +2510,7 @@
           syncChatToServer(chatId);
         }
       }
-      if (currentChatId === chatId) renderMessages(chat);
+      if (currentChatId === chatId) renderMessages(chat, { keepScroll: true });
     }
     function applyRemoteReaction(chatId, messageId, emoji, userId, action) {
       const chat = getChat(chatId);
@@ -2369,7 +2521,7 @@
       if (action === 'remove') delete msg.reactions[userId];
       else msg.reactions[userId] = emoji;
       saveState();
-      if (currentChatId === chatId) renderMessages(chat);
+      if (currentChatId === chatId) renderMessages(chat, { keepScroll: true });
     }
     function getReactionSummary(msg) {
       if (!msg.reactions) return [];
@@ -2418,7 +2570,7 @@
           renderChatList();
           if (currentChatId && currentChatId !== SAVED_CHAT_ID) {
             const chat = getChat(currentChatId);
-            if (chat) { sortMessages(chat); renderMessages(chat); updateChatHeader(); }
+            if (chat) { sortMessages(chat); renderMessages(chat, { keepScroll: true }); updateChatHeader(); }
             else if (!draftChat) { currentChatId = null; showPlaceholder(); }
           }
           joinAllMyChats();
@@ -2461,9 +2613,11 @@
             renderChatList();
             if (currentChatId && currentChatId !== SAVED_CHAT_ID) {
               const chat = getChat(currentChatId);
-              if (chat) { sortMessages(chat); renderMessages(chat); updateChatHeader(); }
+              if (chat) { sortMessages(chat); renderMessages(chat, { keepScroll: true }); updateChatHeader(); }
             }
           });
+          // Однократно подгрузим GIF-библиотеку
+          loadGifLibrary();
         });
         socket.on('disconnect', (reason) => { isConnected = false; joinedChats.clear(); updateSyncIndicator('offline', 'Оффлайн'); if (reason !== 'io client disconnect') scheduleReconnect(); });
         socket.on('connect_error', () => { isConnected = false; updateSyncIndicator('offline', 'Ошибка подключения'); scheduleReconnect(); });
@@ -2474,9 +2628,10 @@
             renderChatList();
             if (currentChatId && currentChatId !== SAVED_CHAT_ID) {
               const chat = getChat(currentChatId);
-              if (chat) { sortMessages(chat); renderMessages(chat); updateChatHeader(); }
+              if (chat) { sortMessages(chat); renderMessages(chat, { keepScroll: true }); updateChatHeader(); }
             }
           });
+          loadGifLibrary();
         });
 
         socket.on('user:online', (data) => {
@@ -2484,7 +2639,7 @@
           onlineUsers[data.userId] = Date.now();
           renderChatList();
           if (userSearchResults.classList.contains('active')) renderSearchResults(userSearchInput.value);
-          if (currentChatId && currentChatId !== SAVED_CHAT_ID) { const chat = getChat(currentChatId); if (chat) renderMessages(chat); updateChatHeaderTypingStatus(); }
+          if (currentChatId && currentChatId !== SAVED_CHAT_ID) { const chat = getChat(currentChatId); if (chat) renderMessages(chat, { keepScroll: true }); updateChatHeaderTypingStatus(); }
           else if (draftChat) { renderDraftMessages(); updateDraftChatHeader(); }
           if (userProfileUid) refreshUserProfileStatus();
           if (groupSettingsModal.classList.contains('active')) renderGroupMembers(getChat(settingsChatId));
@@ -2501,7 +2656,7 @@
           delete onlineUsers[data.userId];
           renderChatList();
           if (userSearchResults.classList.contains('active')) renderSearchResults(userSearchInput.value);
-          if (currentChatId && currentChatId !== SAVED_CHAT_ID) { const chat = getChat(currentChatId); if (chat) renderMessages(chat); updateChatHeaderTypingStatus(); }
+          if (currentChatId && currentChatId !== SAVED_CHAT_ID) { const chat = getChat(currentChatId); if (chat) renderMessages(chat, { keepScroll: true }); updateChatHeaderTypingStatus(); }
           else if (draftChat) { renderDraftMessages(); updateDraftChatHeader(); }
           if (userProfileUid) refreshUserProfileStatus();
           if (groupSettingsModal.classList.contains('active')) renderGroupMembers(getChat(settingsChatId));
@@ -2515,7 +2670,7 @@
             if (fresh) { currentUser = fresh; updateUIAfterAuth(); }
             renderChatList();
             if (userSearchResults.classList.contains('active')) renderSearchResults(userSearchInput.value);
-            if (currentChatId && currentChatId !== SAVED_CHAT_ID) { const chat = getChat(currentChatId); if (chat) renderMessages(chat); }
+            if (currentChatId && currentChatId !== SAVED_CHAT_ID) { const chat = getChat(currentChatId); if (chat) renderMessages(chat, { keepScroll: true }); }
           }
         });
         socket.on('chat:updated', (data) => {
@@ -2543,7 +2698,6 @@
           }
           saveState();
           renderChatList();
-          // Если пользователь стал участником нового чата — подписываемся
           if (currentUser && isUserMemberOfChat(getChat(data.id), currentUser.id)) {
             if (socket && isConnected && !joinedChats.has(data.id)) {
               socket.emit('chat:join', { chatId: data.id });
@@ -2552,7 +2706,7 @@
           }
           if (currentChatId === data.id) {
             const updatedChat = getChat(data.id);
-            if (updatedChat) { renderMessages(updatedChat); updateChatHeader(); updateChannelReadonlyNote(); }
+            if (updatedChat) { renderMessages(updatedChat, { keepScroll: true }); updateChatHeader(); updateChannelReadonlyNote(); }
           }
         });
         socket.on('chat:deleted', (data) => {
@@ -2584,7 +2738,6 @@
           const isOwn = m.from === currentUser.id;
 
           if (isNewForMe && !isOwn && !isActive) {
-            // Увеличиваем счётчик для ЛЮБОГО типа чата: личный, группа, канал
             unread[data.chatId] = (unread[data.chatId] || 0) + 1;
           }
           if (typingUsers[data.chatId] && typingUsers[data.chatId][m.from]) {
@@ -2595,7 +2748,6 @@
 
           if (isActive) {
             const wasNearBottom = isNearBottom();
-            // Помечаем «есть новые снизу», если пользователь не внизу
             if (isNewForMe && !isOwn && !wasNearBottom) {
               pendingScrollDownCount++;
             }
@@ -2672,6 +2824,12 @@
           }
           renderChatList();
         });
+        socket.on('gifs:updated', (data) => {
+          if (Array.isArray(data)) {
+            gifLibrary = data;
+            if (gifPanel && gifPanel.classList.contains('active')) renderGifGrid();
+          }
+        });
       } catch (err) {
         console.error('WebSocket init error:', err);
         updateSyncIndicator('offline', 'Realtime недоступен');
@@ -2734,6 +2892,7 @@
       chatHeaderActions.style.display = 'none';
       if (channelReadonlyNote) channelReadonlyNote.classList.remove('active');
       if (scrollDownBtn) scrollDownBtn.classList.remove('show');
+      if (gifPanel) closeGifPanel();
       hideMentionSuggestions();
       clearReplyTarget();
       joinedChats.clear();
@@ -2876,7 +3035,6 @@
           const avatarInner = avatarUrl ? `<img src="${avatarUrl}" alt="">` : escapeHtml(acc ? displayName(acc).charAt(0).toUpperCase() : '?');
           avatarBlock = `<div class="avatar-wrap"><div class="avatar">${avatarInner}</div><div class="online-dot ${dotActive}"></div></div>`;
         }
-        // Счётчик непрочитанных теперь показывается для всех типов чатов
         const cnt = unread[chat.id] || 0;
         const unreadHtml = cnt > 0 ? `<div class="unread-badge ${isMuted ? 'muted' : ''}">${cnt > 99 ? '99+' : cnt}</div>` : '';
         const muteIcon = isMuted ? '<i class="fas fa-bell-slash mute-icon"></i>' : '';
@@ -2922,6 +3080,7 @@
         if (!isChannelSubscriber(chat, currentUser.id)) { openChannelInfo(chatId); return; }
       } else if (!chat.members.includes(currentUser.id)) return;
       if (draftChat) draftChat = null;
+      if (gifPanel && gifPanel.classList.contains('active')) closeGifPanel();
       currentChatId = chatId;
       if (unread[chatId]) { delete unread[chatId]; saveState(); }
       pendingScrollDownCount = 0;
@@ -2954,6 +3113,7 @@
     }
     function openDraftChat() {
       if (!draftChat) return;
+      if (gifPanel && gifPanel.classList.contains('active')) closeGifPanel();
       currentChatId = null;
       renderChatList();
       forceScrollBottom = true;
@@ -3012,7 +3172,7 @@
       return newChat.id;
     }
 
-    // Рендер одного сообщения. Для видео — особый вид с превью и кнопкой play.
+    // Рендер одного сообщения
     function renderSingleMessage(msg, isDraft) {
       const isOwn = msg.from === currentUser.id;
       const sender = getAccount(msg.from);
@@ -3045,20 +3205,25 @@
             </div>`;
         } else quoteHtml = `<div class="msg-reply-quote"><div class="rq-text" style="opacity:.6">Сообщение удалено</div></div>`;
       }
+
       let contentHtml = '';
+      let hasMedia = false;
+      let onlyMediaNoText = false;
       if (msg.media) {
+        hasMedia = true;
         const m = msg.media;
         const src = m.url ? resolveUrl(m.url) : m.data;
         if (src) {
           if (m.kind === 'image') {
-            contentHtml += `<div class="media-wrap"><img src="${src}" alt="${escapeHtml(m.name || '')}" loading="lazy"></div>`;
+            const isGif = m.mime === 'image/gif' || m.mime === 'image/webp';
+            contentHtml += `<div class="media-wrap${isGif ? ' gif-media' : ''}"><img src="${src}" alt="${escapeHtml(m.name || '')}" loading="lazy"></div>`;
           } else if (m.kind === 'video') {
-            // Новый вид: превью + кнопка play. Controls включатся только после клика.
             contentHtml += `
               <div class="video-wrap" data-src="${escapeHtml(src)}">
-                <div class="video-poster" style="background-image: url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2240%22 height=%2240%22><rect width=%2240%22 height=%2240%22 fill=%22%23171e30%22/></svg>')"></div>
+                <div class="video-poster"></div>
                 <div class="video-play-btn"><i class="fas fa-play"></i></div>
                 <div class="video-duration-badge">0:00</div>
+                <button class="video-expand-btn" type="button" title="На весь экран"><i class="fas fa-expand"></i></button>
               </div>`;
           } else if (m.kind === 'audio') {
             contentHtml += `<div class="media-wrap"><audio src="${src}" controls preload="metadata"></audio></div>`;
@@ -3071,7 +3236,9 @@
           }
         }
       }
+      if (!msg.text && hasMedia) onlyMediaNoText = true;
       if (msg.text) contentHtml += `<div class="msg-text">${renderTextWithMentions(msg.text)}</div>`;
+
       const isSaved = currentChatId === SAVED_CHAT_ID;
       const authorHtml = (isSaved || isChannel) ? '' : (isOwn ? `<div class="msg-author">${escapeHtml(senderName)}</div>` : `<div class="msg-author" data-uid="${msg.from}">${escapeHtml(senderName)}</div>`);
       const summary = getReactionSummary(msg);
@@ -3086,13 +3253,15 @@
       }
       const statusHtml = isOwn && !isDraft && !isChannel ? getMessageStatusHtml(msg) : '';
       const viewsHtml = isChannel ? `<span class="msg-views"><i class="fas fa-eye"></i> ${msg.views || 0}</span>` : '';
+      const wideClass = (hasMedia && msg.media.kind === 'video' && onlyMediaNoText) ? ' message-with-media' : '';
+
       row.innerHTML = `
         <div class="msg-avatar-wrap">
           <div class="msg-avatar" data-uid="${msg.from}">${avatarInner}</div>
           ${!isChannel ? `<div class="online-dot ${dotActive}"></div>` : ''}
         </div>
         <div class="message-block ${(isOwn && !isChannel) ? 'own' : 'other'}">
-          <div class="message ${(isOwn && !isChannel) ? 'own' : 'other'}" data-msg-id="${msg.id}">
+          <div class="message ${(isOwn && !isChannel) ? 'own' : 'other'}${wideClass}" data-msg-id="${msg.id}">
             ${forwardedHtml}
             ${authorHtml}
             ${quoteHtml}
@@ -3101,6 +3270,7 @@
           </div>
           ${reactionsHtml}
         </div>`;
+
       const quoteEl = row.querySelector('.msg-reply-quote');
       if (quoteEl && !isDraft) {
         quoteEl.onclick = (e) => {
@@ -3115,43 +3285,55 @@
           }
         };
       }
-      // Видео: ленивая подгрузка метаданных и play
+
+      // ====== ВИДЕО-ПЛЕЕР ======
       const videoWrap = row.querySelector('.video-wrap');
       if (videoWrap && !isDraft) {
         const src = videoWrap.dataset.src;
-        let loaded = false;
+        let metaLoaded = false;
+
         const loadMeta = () => {
-          if (loaded) return;
-          loaded = true;
-          const v = document.createElement('video');
-          v.preload = 'metadata';
-          v.muted = true;
-          v.src = src;
-          v.addEventListener('loadedmetadata', () => {
-            const w = v.videoWidth || 16;
-            const h = v.videoHeight || 9;
+          if (metaLoaded) return;
+          metaLoaded = true;
+          const probe = document.createElement('video');
+          probe.preload = 'metadata';
+          probe.muted = true;
+          probe.src = src;
+          probe.addEventListener('loadedmetadata', () => {
+            const w = probe.videoWidth || 16;
+            const h = probe.videoHeight || 9;
             const ratio = w / h;
-            videoWrap.style.aspectRatio = `${w} / ${h}`;
-            // Ограничим разумно
-            const maxW = 320;
-            const displayW = Math.min(maxW, w);
-            const displayH = displayW / ratio;
-            videoWrap.style.maxWidth = displayW + 'px';
-            const dur = v.duration;
+            let displayRatio = ratio;
+            if (ratio > 21/9) displayRatio = 21/9;
+            if (ratio < 9/16) displayRatio = 9/16;
+            videoWrap.style.aspectRatio = `${displayRatio}`;
+            try { probe.currentTime = Math.min(1, (probe.duration || 2) / 2); } catch (e) {}
             const badge = videoWrap.querySelector('.video-duration-badge');
-            if (badge) badge.textContent = formatDuration(dur);
+            if (badge) badge.textContent = formatDuration(probe.duration);
           });
+          probe.addEventListener('seeked', () => {
+            try {
+              const canvas = document.createElement('canvas');
+              canvas.width = 320;
+              canvas.height = Math.round(320 / probe.videoWidth * probe.videoHeight) || 180;
+              canvas.getContext('2d').drawImage(probe, 0, 0, canvas.width, canvas.height);
+              const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+              const poster = videoWrap.querySelector('.video-poster');
+              if (poster) poster.style.backgroundImage = `url(${dataUrl})`;
+            } catch (e) {}
+          }, { once: true });
         };
-        // Грузим метаданные лениво, когда видео попадает в viewport
+
         if ('IntersectionObserver' in window) {
           const io = new IntersectionObserver((entries) => {
             entries.forEach(en => { if (en.isIntersecting) { loadMeta(); io.disconnect(); } });
-          }, { rootMargin: '100px' });
+          }, { rootMargin: '200px' });
           io.observe(videoWrap);
         } else {
           loadMeta();
         }
-        videoWrap.addEventListener('click', () => {
+
+        const enterPlayMode = () => {
           if (videoWrap.classList.contains('playing')) return;
           videoWrap.classList.add('playing');
           const v = document.createElement('video');
@@ -3160,12 +3342,29 @@
           v.autoplay = true;
           v.playsInline = true;
           v.setAttribute('playsinline', '');
-          v.style.cssText = 'width:100%; height:100%; display:block; object-fit:contain; background:#000; border-radius:12px;';
+          v.style.cssText = 'width:100%; height:100%; display:block; object-fit:contain; background:#000; border-radius:8px;';
           videoWrap.innerHTML = '';
           videoWrap.appendChild(v);
+          const expandBtn = document.createElement('button');
+          expandBtn.className = 'video-expand-btn';
+          expandBtn.type = 'button';
+          expandBtn.title = 'На весь экран';
+          expandBtn.innerHTML = '<i class="fas fa-expand"></i>';
+          expandBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (v.requestFullscreen) v.requestFullscreen();
+            else if (v.webkitEnterFullscreen) v.webkitEnterFullscreen();
+          };
+          videoWrap.appendChild(expandBtn);
           v.play().catch(() => {});
+        };
+
+        videoWrap.addEventListener('click', (e) => {
+          if (e.target.closest('.video-expand-btn')) return;
+          enterPlayMode();
         });
       }
+
       const messageEl = row.querySelector('.message');
       if (messageEl && !isDraft) {
         let longPressTimer = null;
@@ -3228,17 +3427,10 @@
       });
     }
 
-    /**
-     * renderMessages(chat, options)
-     *   options.keepScroll — не трогать скролл, сохранить позицию
-     *   options.newMessageId — id нового сообщения (для anchor)
-     * Если не внизу и не keepScroll — пользователь сам увидит кнопку «вниз».
-     */
     function renderMessages(chat, options) {
       options = options || {};
       const keepScroll = !!options.keepScroll;
 
-      // 1. Запомнить anchor до перерисовки, если не «forceScrollBottom»
       let anchor = null;
       const wasAtBottom = isNearBottom();
       if (!forceScrollBottom && !wasAtBottom) {
@@ -3266,18 +3458,14 @@
       attachMessageHandlers();
       renderTypingIndicator();
 
-      // 2. Восстановление позиции скролла
       if (forceScrollBottom) {
         messagesArea.scrollTop = messagesArea.scrollHeight;
         pendingScrollDownCount = 0;
       } else if (anchor) {
         restoreScrollAnchor(anchor);
-      } else if (wasAtBottom && !keepScroll) {
-        messagesArea.scrollTop = messagesArea.scrollHeight;
-      } else if (wasAtBottom && keepScroll) {
+      } else if (wasAtBottom) {
         messagesArea.scrollTop = messagesArea.scrollHeight;
       }
-      // если был не внизу и не удалось восстановить — оставляем как есть
 
       forceScrollBottom = false;
       animateMessagesNextRender = false;
@@ -3518,7 +3706,6 @@
       if (e.key === 'Enter' && !mentionSuggestions.classList.contains('active')) { e.preventDefault(); sendMessage(); }
     });
 
-    // Скролл-мониторинг
     messagesArea.addEventListener('scroll', () => {
       if (isNearBottom()) {
         pendingScrollDownCount = 0;
@@ -3533,6 +3720,216 @@
         pendingScrollDownCount = 0;
         setTimeout(() => { if (scrollDownBtn) scrollDownBtn.classList.remove('show'); }, 300);
       });
+    }
+
+    // ============================================================
+    // GIF-БИБЛИОТЕКА
+    // ============================================================
+    function openGifPanel() {
+      if (!currentChatId && !draftChat) return;
+      gifPanel.classList.add('active');
+      hideMentionSuggestions();
+      if (gifLibrary.length === 0) loadGifLibrary();
+      else renderGifGrid();
+    }
+    function closeGifPanel() {
+      gifPanel.classList.remove('active');
+      gifFilter = '';
+      if (gifSearch) gifSearch.value = '';
+    }
+    async function loadGifLibrary() {
+      const res = await apiRequest('GET', '/api/gifs');
+      if (res && Array.isArray(res)) {
+        gifLibrary = res;
+      } else if (res && res.__error) {
+        console.warn('Не удалось загрузить GIF-библиотеку');
+        gifLibrary = [];
+      }
+      renderGifGrid();
+    }
+    function renderGifGrid() {
+      if (!gifGrid) return;
+      const q = (gifFilter || '').toLowerCase().trim();
+      const filtered = q
+        ? gifLibrary.filter(g => (g.name || '').toLowerCase().includes(q))
+        : gifLibrary;
+      if (filtered.length === 0) {
+        gifGrid.innerHTML = `
+          <div class="gp-empty">
+            <i class="fas fa-film"></i>
+            ${gifLibrary.length === 0 ? 'Библиотека пуста. Загрузите первую GIF!' : 'Ничего не найдено'}
+          </div>`;
+        return;
+      }
+      gifGrid.innerHTML = filtered.map(g => `
+        <div class="gp-item" data-gif-id="${escapeHtml(g.id)}" data-gif-url="${escapeHtml(resolveUrl(g.url))}">
+          <img src="${escapeHtml(resolveUrl(g.url))}" alt="${escapeHtml(g.name || 'gif')}" loading="lazy">
+          <div class="gp-item-actions">
+            <button class="gp-item-btn save" title="Отправить в Избранное"><i class="fas fa-bookmark"></i></button>
+            <button class="gp-item-btn delete" title="Удалить"><i class="fas fa-trash"></i></button>
+          </div>
+        </div>
+      `).join('');
+      gifGrid.querySelectorAll('.gp-item').forEach(el => {
+        el.onclick = async (e) => {
+          if (e.target.closest('.gp-item-btn')) return;
+          const url = el.dataset.gifUrl;
+          const name = el.querySelector('img').alt || 'gif';
+          await sendGifToChat(url, name);
+        };
+      });
+      gifGrid.querySelectorAll('.gp-item-btn.save').forEach(btn => {
+        btn.onclick = async (e) => {
+          e.stopPropagation();
+          const item = btn.closest('.gp-item');
+          const url = item.dataset.gifUrl;
+          const name = item.querySelector('img').alt || 'gif';
+          await saveGifToFavorites(url, name);
+        };
+      });
+      gifGrid.querySelectorAll('.gp-item-btn.delete').forEach(btn => {
+        btn.onclick = async (e) => {
+          e.stopPropagation();
+          const item = btn.closest('.gp-item');
+          const id = item.dataset.gifId;
+          if (!confirm('Удалить эту GIF из библиотеки?')) return;
+          const res = await apiRequest('POST', '/api/gifs/' + encodeURIComponent(id) + '/delete', {});
+          if (res && res.ok) {
+            gifLibrary = gifLibrary.filter(g => g.id !== id);
+            renderGifGrid();
+            showToast('GIF удалена');
+          } else {
+            showToast('Не удалось удалить');
+          }
+        };
+      });
+    }
+    async function uploadGifFile(file) {
+      if (!currentUser) return;
+      if (!file) return;
+      if (file.size > 20 * 1024 * 1024) { alert('GIF слишком большой (макс. 20 МБ)'); return; }
+      showUpload(true, 'Загрузка GIF...', 20);
+      try {
+        const uploaded = await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', SERVER_URL + '/api/gifs/upload', true);
+          xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) showUpload(true, 'Загрузка GIF...', Math.min(90, Math.round(e.loaded / e.total * 90)));
+          };
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const data = JSON.parse(xhr.responseText);
+                if (data && data.ok) resolve(data.gif);
+                else reject(new Error((data && data.error) || 'upload_failed'));
+              } catch (e) { reject(new Error('invalid_response')); }
+            } else reject(new Error('http_' + xhr.status));
+          };
+          xhr.onerror = () => reject(new Error('network_error'));
+          const form = new FormData();
+          form.append('file', file);
+          form.append('userId', currentUser.id);
+          xhr.send(form);
+        });
+        showUpload(false);
+        if (uploaded && !gifLibrary.some(g => g.id === uploaded.id)) {
+          gifLibrary.unshift(uploaded);
+          renderGifGrid();
+        }
+        showToast('GIF загружена');
+      } catch (err) {
+        showUpload(false);
+        alert('Не удалось загрузить GIF: ' + err.message);
+      }
+    }
+    async function sendGifToChat(url, name) {
+      if (!currentUser) return;
+      if (!currentChatId && !draftChat) return;
+      const msgMedia = {
+        kind: 'image',
+        url: url,
+        name: name || 'gif',
+        size: 0,
+        mime: 'image/gif'
+      };
+      const msg = {
+        id: genMessageId(),
+        from: currentUser.id,
+        text: '',
+        time: new Date().toISOString(),
+        media: msgMedia,
+        reactions: {},
+        __pending: true
+      };
+      if (replyTarget) { msg.replyTo = replyTarget.msg.id; clearReplyTarget(); }
+
+      if (draftChat && !currentChatId) {
+        draftChat.tempMessages.push(msg);
+        await commitDraftChat(msg);
+        closeGifPanel();
+        return;
+      }
+
+      const chat = getChat(currentChatId);
+      if (!chat) return;
+      if (chat.type === 'channel' && !isChannelAdmin(chat, currentUser.id)) {
+        showToast('Только администраторы могут публиковать посты');
+        return;
+      }
+
+      if (!chat.messages) chat.messages = [];
+      chat.messages.push(msg);
+      sortMessages(chat);
+
+      if (chat.type === 'saved') {
+        delete msg.__pending;
+        saveSavedChats();
+        forceScrollBottom = true;
+        renderMessages(chat);
+        renderChatList();
+        closeGifPanel();
+        return;
+      }
+
+      saveState();
+      forceScrollBottom = true;
+      renderMessages(chat);
+      renderChatList();
+      if (socket && isConnected) socket.emit('message:send', { chatId: chat.id, message: msg });
+      try {
+        const result = await apiRequest('PUT', '/api/chats/' + chat.id, {
+          id: chat.id, name: chat.name, type: chat.type,
+          members: chat.members.slice(),
+          channelMeta: chat.channelMeta,
+          messages: chat.messages.filter(m => !m.__pending && !m.__failed).slice()
+        });
+        if (result && result.__error) { msg.__failed = true; delete msg.__pending; }
+        else delete msg.__pending;
+      } catch (e) { msg.__failed = true; delete msg.__pending; }
+      saveState();
+      renderMessages(chat, { keepScroll: true });
+      renderChatList();
+      closeGifPanel();
+    }
+    async function saveGifToFavorites(url, name) {
+      if (!currentUser) return;
+      const saved = getSavedChat();
+      const msg = {
+        id: genMessageId(),
+        from: currentUser.id,
+        text: '',
+        time: new Date().toISOString(),
+        media: { kind: 'image', url, name: name || 'gif', size: 0, mime: 'image/gif' },
+        reactions: {}
+      };
+      saved.messages.push(msg);
+      saveSavedChats();
+      renderChatList();
+      showToast('GIF сохранена в Избранное');
+      if (currentChatId === SAVED_CHAT_ID) {
+        forceScrollBottom = true;
+        renderMessages(saved);
+      }
     }
 
     // ---------- ГАЛЕРЕЯ ----------
@@ -3803,6 +4200,7 @@
       currentUser = null; currentChatId = null; draftChat = null;
       unread = {}; clearReplyTarget();
       joinedChats.clear();
+      if (gifPanel && gifPanel.classList.contains('active')) closeGifPanel();
       updateUIAfterAuth(); showPlaceholder(); renderChatList(); saveState();
       localStorage.removeItem('mzgram_chat');
       closeMobileChat();
@@ -4462,6 +4860,22 @@
       sendBtn.onclick = (e) => { e.preventDefault(); sendMessage(); return false; };
       attachBtn.onclick = (e) => { e.preventDefault(); if (!currentChatId && !draftChat) return; openMediaPicker(); return false; };
       fileInput.onchange = async (e) => { const files = Array.from(e.target.files || []); if (files.length === 0) return; for (const f of files) await sendOneMediaFile(f, '', currentChatId); };
+
+      // GIF-кнопки
+      gifBtn.onclick = (e) => {
+        e.preventDefault();
+        if (gifPanel.classList.contains('active')) closeGifPanel();
+        else openGifPanel();
+        return false;
+      };
+      gifPanelClose.onclick = (e) => { e.preventDefault(); closeGifPanel(); };
+      gifSearch.oninput = (e) => { gifFilter = e.target.value; renderGifGrid(); };
+      gifUploadBtn.onclick = (e) => { e.preventDefault(); gifUploadInput.value = ''; gifUploadInput.click(); };
+      gifUploadInput.onchange = async (e) => {
+        const files = Array.from(e.target.files || []);
+        for (const f of files) await uploadGifFile(f);
+      };
+
       chatSettingsBtn.onclick = (e) => {
         e.preventDefault();
         if (currentChatId && currentChatId !== SAVED_CHAT_ID) {
@@ -4544,6 +4958,13 @@
       userProfileMessageBtn.onclick = (e) => { e.preventDefault(); handleUserProfileMessage(); return false; };
       document.addEventListener('click', (e) => {
         if (!mentionSuggestions.contains(e.target) && e.target !== messageInput) hideMentionSuggestions();
+      });
+      // Закрытие GIF-панели по клику вне её
+      document.addEventListener('click', (e) => {
+        if (!gifPanel || !gifPanel.classList.contains('active')) return;
+        if (gifPanel.contains(e.target)) return;
+        if (e.target.closest('#gifBtn')) return;
+        closeGifPanel();
       });
       document.addEventListener('visibilitychange', () => {
         if (!document.hidden) {
