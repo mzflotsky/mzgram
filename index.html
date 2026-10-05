@@ -10,7 +10,6 @@
     html, body { width: 100%; height: 100%; background: #0b0d14; color: #e8edf5; overscroll-behavior: none; }
     #app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; width: 100vw; background: #0f111c; overflow: hidden; }
 
-    /* Псевдо-пароль: визуально точки, но для браузера — обычный text */
     .pseudo-password {
       -webkit-text-security: disc !important;
       text-security: disc !important;
@@ -32,6 +31,7 @@
     @keyframes floatIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     @keyframes ripple { to { transform: scale(4); opacity: 0; } }
     @keyframes glowPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(139, 124, 247, 0.6); } 50% { box-shadow: 0 0 0 12px rgba(139, 124, 247, 0); } }
+    @keyframes scrollDownPulse { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 
     .navbar {
       background: #141827; padding: 10px 16px; display: flex; align-items: center;
@@ -209,12 +209,26 @@
     .chat-window .chat-placeholder p { margin-top: 8px; color: #6f7bb5; }
 
     .messages-area {
-      flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column;
-      gap: 12px; -webkit-overflow-scrolling: touch;
+      flex: 1; overflow-y: auto; padding: 12px 16px 4px 16px; display: flex; flex-direction: column;
+      gap: 12px; -webkit-overflow-scrolling: touch; position: relative;
     }
     .messages-area::-webkit-scrollbar { width: 5px; }
     .messages-area::-webkit-scrollbar-track { background: #0e111d; }
     .messages-area::-webkit-scrollbar-thumb { background: #3d4670; border-radius: 20px; }
+
+    .scroll-down-btn {
+      position: absolute; bottom: 78px; right: 20px;
+      background: #6d5fd0; color: #fff;
+      padding: 8px 14px; border-radius: 40px; border: none;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      display: none; align-items: center; gap: 6px;
+      box-shadow: 0 6px 20px #4a3bb088;
+      z-index: 30;
+      animation: scrollDownPulse 2s infinite;
+    }
+    .scroll-down-btn:hover { background: #7b6cf0; }
+    .scroll-down-btn.show { display: flex; }
+    .scroll-down-btn i { font-size: 12px; }
 
     .saved-empty {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -314,9 +328,62 @@
     .msg-forwarded-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: #a78bfa; font-weight: 600; margin-bottom: 4px; }
     .message.own .msg-forwarded-badge { color: #7dd3fc; }
 
+    /* ======== МЕДИА В СООБЩЕНИЯХ ======== */
     .message .media-wrap { margin: 4px 0 6px 0; border-radius: 12px; overflow: hidden; max-width: 340px; background: #0e111d; }
-    .message .media-wrap img, .message .media-wrap video { display: block; max-width: 100%; max-height: 320px; border-radius: 12px; }
+    .message .media-wrap img { display: block; max-width: 100%; max-height: 320px; border-radius: 12px; }
     .message .media-wrap audio { display: block; width: 100%; margin: 4px 0; }
+
+    /* Новый вид видео: с превью, кнопкой play и без рывков */
+    .message .video-wrap {
+      position: relative;
+      display: block;
+      width: 100%;
+      max-width: 320px;
+      aspect-ratio: 16 / 9;      /* переопределяется через JS после loadedmetadata */
+      background: #000 center/cover no-repeat;
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      user-select: none;
+      contain: layout paint;
+    }
+    .message .video-wrap video {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+      border-radius: 12px;
+    }
+    .message .video-wrap .video-poster {
+      position: absolute; inset: 0;
+      background-size: cover; background-position: center;
+      border-radius: 12px;
+      pointer-events: none;
+    }
+    .message .video-wrap .video-play-btn {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 56px; height: 56px; border-radius: 50%;
+      background: rgba(0,0,0,0.55);
+      border: 2px solid rgba(255,255,255,0.85);
+      color: #fff; font-size: 20px;
+      display: flex; align-items: center; justify-content: center;
+      padding-left: 4px;
+      transition: 0.2s;
+      pointer-events: none;
+    }
+    .message .video-wrap:hover .video-play-btn { transform: translate(-50%, -50%) scale(1.1); background: rgba(109, 95, 208, 0.85); }
+    .message .video-wrap.playing .video-poster,
+    .message .video-wrap.playing .video-play-btn { display: none; }
+    .message .video-wrap .video-duration-badge {
+      position: absolute; bottom: 8px; right: 8px;
+      background: rgba(0,0,0,0.7); color: #fff;
+      padding: 2px 8px; border-radius: 8px;
+      font-size: 11px; font-weight: 600;
+      pointer-events: none;
+    }
+    .message .video-wrap.playing .video-duration-badge { display: none; }
+
     .message .media-file { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #0e111d; border-radius: 12px; text-decoration: none; color: #c8d0f0; transition: 0.15s; }
     .message .media-file:hover { background: #141a30; transform: translateY(-1px); }
     .message .media-file i { font-size: 22px; color: #8b7cf7; }
@@ -795,6 +862,7 @@
         <p>Нажмите на чат слева или создайте новый</p>
       </div>
       <div class="messages-area" id="messagesArea" style="display: none;"></div>
+      <button class="scroll-down-btn" id="scrollDownBtn"><i class="fas fa-arrow-down"></i> <span id="scrollDownText">Вниз</span></button>
       <div class="input-area" id="inputArea" style="display: none;">
         <div class="reply-bar" id="replyBar">
           <div class="rb-info">
@@ -837,7 +905,6 @@
 
 <!-- ============ МОДАЛКИ ============ -->
 
-<!-- АВТОРИЗАЦИЯ -->
 <div class="modal-overlay" id="authModal">
   <div class="modal">
     <h2 id="modalTitle"><i class="fas fa-key"></i> Вход</h2>
@@ -860,7 +927,6 @@
       </div>
 
       <label for="passwordInput">Пароль</label>
-      <!-- type="text" + pseudo-password: браузер не проверяет на утечки -->
       <input type="text" id="passwordInput" name="mzgram_pwd_d1a7" placeholder="••••••••"
              class="pseudo-password"
              autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
@@ -881,7 +947,6 @@
   </div>
 </div>
 
-<!-- СОЗДАНИЕ ЧАТА -->
 <div class="modal-overlay" id="newChatModal">
   <div class="modal">
     <h2><i class="fas fa-plus-circle"></i> Новый чат</h2>
@@ -913,7 +978,6 @@
   </div>
 </div>
 
-<!-- НАСТРОЙКИ ГРУППЫ -->
 <div class="modal-overlay" id="groupSettingsModal">
   <div class="modal">
     <h2><i class="fas fa-users-cog"></i> Настройки группы</h2>
@@ -937,7 +1001,6 @@
   </div>
 </div>
 
-<!-- НАСТРОЙКИ КАНАЛА -->
 <div class="modal-overlay" id="channelSettingsModal">
   <div class="modal">
     <h2><i class="fas fa-bullhorn"></i> Настройки канала</h2>
@@ -976,7 +1039,6 @@
   </div>
 </div>
 
-<!-- ИНФО О КАНАЛЕ -->
 <div class="modal-overlay" id="channelInfoModal">
   <div class="modal">
     <h2><i class="fas fa-bullhorn"></i> О канале</h2>
@@ -997,7 +1059,6 @@
   </div>
 </div>
 
-<!-- ПРОФИЛЬ -->
 <div class="modal-overlay" id="profileModal">
   <div class="modal">
     <h2><i class="fas fa-user"></i> Мой профиль</h2>
@@ -1033,7 +1094,6 @@
   </div>
 </div>
 
-<!-- ЧУЖОЙ ПРОФИЛЬ -->
 <div class="modal-overlay" id="userProfileModal">
   <div class="modal">
     <h2><i class="fas fa-user-circle"></i> Профиль</h2>
@@ -1058,7 +1118,6 @@
   </div>
 </div>
 
-<!-- СМЕНА ПАРОЛЯ -->
 <div class="modal-overlay" id="changePasswordModal">
   <div class="modal">
     <h2><i class="fas fa-lock"></i> Смена пароля</h2>
@@ -1093,7 +1152,6 @@
   </div>
 </div>
 
-<!-- ВОССТАНОВЛЕНИЕ ПАРОЛЯ -->
 <div class="modal-overlay" id="forgotPasswordModal">
   <div class="modal">
     <h2><i class="fas fa-key"></i> Восстановление пароля</h2>
@@ -1122,7 +1180,6 @@
   </div>
 </div>
 
-<!-- ПЕРЕСЛАТЬ -->
 <div class="modal-overlay" id="forwardModal">
   <div class="modal">
     <h2><i class="fas fa-share"></i> Переслать</h2>
@@ -1139,10 +1196,9 @@
     console.log('Mzgram инициализация...');
 
     // ============================================================
-    // ЗАЩИТА ОТ МЕНЕДЖЕРОВ ПАРОЛЕЙ И ОТ ПРОВЕРКИ БРАУЗЕРОМ УТЕЧЕК
+    // ЗАЩИТА ОТ МЕНЕДЖЕРОВ ПАРОЛЕЙ
     // ============================================================
     function hardenInputsAgainstPasswordManagers() {
-      // Обычные текстовые поля
       document.querySelectorAll('input[type="text"], input[type="search"], input[type="email"], textarea').forEach(inp => {
         if (inp.dataset.fakeTrap === '1') return;
         if (!inp.hasAttribute('autocomplete')) inp.setAttribute('autocomplete', 'off');
@@ -1198,6 +1254,7 @@
     const NOTIF_TOAST_TTL = 5000;
     const TYPING_TIMEOUT = 4000;
     const TYPING_THROTTLE = 1500;
+    const SCROLL_BOTTOM_THRESHOLD = 80;
 
     const SAVED_CHAT_ID = 'saved_messages_local';
 
@@ -1242,15 +1299,21 @@
 
     let forceScrollBottom = false;
     let animateMessagesNextRender = false;
+    // Позиция скролла до перерисовки
+    let scrollAnchor = null; // { msgId, offsetTop }
+    // Считаем новые сообщения, пока пользователь не внизу
+    let pendingScrollDownCount = 0;
 
     let typingUsers = {};
     let typingCleanupTimer = null;
-    let typingSendTimer = null;
     let typingStopTimer = null;
     let lastTypingSentTs = 0;
 
     let notifSettings = { global: true, mutedChats: {} };
     let viewedPosts = new Set();
+
+    // Список чатов, на которые текущий пользователь уже подписался через chat:join
+    const joinedChats = new Set();
 
     // ---------- DOM ----------
     const currentAccountNameSpan = document.getElementById('currentAccountName');
@@ -1290,6 +1353,8 @@
     const forwardModal = document.getElementById('forwardModal');
     const forwardList = document.getElementById('forwardList');
     const forwardCancelBtn = document.getElementById('forwardCancelBtn');
+    const scrollDownBtn = document.getElementById('scrollDownBtn');
+    const scrollDownText = document.getElementById('scrollDownText');
 
     const authModal = document.getElementById('authModal');
     const loginInput = document.getElementById('loginInput');
@@ -1494,6 +1559,12 @@
       const mm = String(d.getMinutes()).padStart(2, '0');
       return hh + ':' + mm;
     }
+    function formatDuration(seconds) {
+      if (!seconds || isNaN(seconds)) return '0:00';
+      const m = Math.floor(seconds / 60);
+      const s = Math.floor(seconds % 60);
+      return m + ':' + (s < 10 ? '0' : '') + s;
+    }
     function toIsoUtc(t) {
       if (!t) return new Date().toISOString();
       const d = new Date(t);
@@ -1563,11 +1634,15 @@
       if (chat.channelMeta.subscribers && chat.channelMeta.subscribers.includes(userId)) return true;
       return false;
     }
+    function isUserMemberOfChat(chat, userId) {
+      if (!chat || !userId) return false;
+      if (chat.type === 'channel') return isChannelSubscriber(chat, userId);
+      return (chat.members || []).includes(userId);
+    }
     function getReactionInfo(id) {
       return REACTION_EMOJIS.find(r => r.id === id) || { id, icon: 'fa-circle-question', color: '#7a86b5' };
     }
 
-    // saveState теперь не тащит base64 в localStorage
     function saveState() {
       const lightChats = chats.map(c => {
         if (!c.messages || !c.messages.length) return c;
@@ -1622,6 +1697,9 @@
       }
       try { unread = JSON.parse(localStorage.getItem('mzgram_unread') || '{}'); }
       catch (e) { unread = {}; }
+      // Чистим unread для чатов, которых нет
+      const validIds = new Set(chats.map(c => c.id));
+      Object.keys(unread).forEach(k => { if (!validIds.has(k)) delete unread[k]; });
       loadSavedChats();
       loadNotifSettings();
     }
@@ -1841,7 +1919,7 @@
             if (now - typingUsers[cid][uid] > TYPING_TIMEOUT + 500) delete typingUsers[cid][uid];
           });
           if (Object.keys(typingUsers[cid]).length !== before) {
-            if (cid === currentChatId || cid === null) needRender = true;
+            if (cid === currentChatId) needRender = true;
           }
         });
         if (needRender) {
@@ -1871,7 +1949,7 @@
         </div>
       `;
       messagesArea.appendChild(row);
-      if (forceScrollBottom) messagesArea.scrollTop = messagesArea.scrollHeight;
+      if (isNearBottom()) messagesArea.scrollTop = messagesArea.scrollHeight;
     }
     function updateChatHeaderTypingStatus() {
       if (!currentChatId) return;
@@ -1889,6 +1967,52 @@
         statusHtml = '<span class="status-text">онлайн</span>';
       }
       chatTitle.innerHTML = `<i class="fas fa-user"></i> ${escapeHtml(name)} ${statusHtml}`;
+    }
+
+    // ---------- СКРОЛЛ ----------
+    function isNearBottom() {
+      if (!messagesArea) return true;
+      const dist = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight;
+      return dist < SCROLL_BOTTOM_THRESHOLD;
+    }
+    function updateScrollDownBtn() {
+      if (!scrollDownBtn) return;
+      if (!currentChatId || currentChatId === SAVED_CHAT_ID) { scrollDownBtn.classList.remove('show'); return; }
+      if (isNearBottom()) {
+        scrollDownBtn.classList.remove('show');
+        pendingScrollDownCount = 0;
+      } else if (pendingScrollDownCount > 0) {
+        scrollDownText.textContent = pendingScrollDownCount + ' новых';
+        scrollDownBtn.classList.add('show');
+      } else {
+        scrollDownText.textContent = 'Вниз';
+        scrollDownBtn.classList.add('show');
+      }
+    }
+    function captureScrollAnchor() {
+      if (!messagesArea) return null;
+      if (isNearBottom()) return null;
+      // Ищем первое видимое сообщение
+      const msgEls = messagesArea.querySelectorAll('.message[data-msg-id]');
+      const containerTop = messagesArea.getBoundingClientRect().top;
+      for (const el of msgEls) {
+        const rect = el.getBoundingClientRect();
+        if (rect.bottom > containerTop) {
+          return { msgId: el.dataset.msgId, offset: rect.top - containerTop };
+        }
+      }
+      return null;
+    }
+    function restoreScrollAnchor(anchor) {
+      if (!anchor) return false;
+      const el = messagesArea.querySelector(`.message[data-msg-id="${anchor.msgId}"]`);
+      if (!el) return false;
+      const containerTop = messagesArea.getBoundingClientRect().top;
+      const rect = el.getBoundingClientRect();
+      const currentOffset = rect.top - containerTop;
+      const diff = currentOffset - anchor.offset;
+      messagesArea.scrollTop += diff;
+      return true;
     }
 
     // ---------- СИНХРОНИЗАЦИЯ ----------
@@ -1915,19 +2039,16 @@
       }
     }
 
-    // Загрузка файла на сервер multipart/form-data
     async function uploadFileToServer(file) {
       return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open('POST', SERVER_URL + '/api/upload', true);
-
         xhr.upload.onprogress = (e) => {
           if (e.lengthComputable) {
             const percent = Math.min(90, Math.round((e.loaded / e.total) * 90));
             showUpload(true, 'Загрузка файла...', percent);
           }
         };
-
         xhr.onload = () => {
           if (xhr.status >= 200 && xhr.status < 300) {
             try {
@@ -1939,10 +2060,8 @@
             reject(new Error('http_' + xhr.status));
           }
         };
-
         xhr.onerror = () => reject(new Error('network_error'));
         xhr.onabort = () => reject(new Error('aborted'));
-
         const form = new FormData();
         form.append('file', file);
         xhr.send(form);
@@ -2016,6 +2135,21 @@
       if (chat.commentsForChannel) payload.commentsForChannel = chat.commentsForChannel;
       try { await apiRequest('PUT', '/api/chats/' + chatId, payload); }
       catch (err) { updateSyncIndicator('offline', 'Ошибка синхронизации'); }
+    }
+
+    // Подписать сокет на все чаты, где пользователь состоит
+    function joinAllMyChats() {
+      if (!socket || !isConnected || !currentUser) return;
+      chats.forEach(c => {
+        if (isUserMemberOfChat(c, currentUser.id) && !joinedChats.has(c.id)) {
+          socket.emit('chat:join', { chatId: c.id });
+          joinedChats.add(c.id);
+        }
+      });
+      if (currentChatId && currentChatId !== SAVED_CHAT_ID && !joinedChats.has(currentChatId)) {
+        socket.emit('chat:join', { chatId: currentChatId });
+        joinedChats.add(currentChatId);
+      }
     }
 
     // ---------- ПОИСК ----------
@@ -2287,6 +2421,7 @@
             if (chat) { sortMessages(chat); renderMessages(chat); updateChatHeader(); }
             else if (!draftChat) { currentChatId = null; showPlaceholder(); }
           }
+          joinAllMyChats();
         }
         updateFaviconBadge();
       }, SYNC_INTERVAL);
@@ -2318,9 +2453,11 @@
           updateSyncIndicator('', 'Онлайн');
           if (currentUser) {
             socket.emit('user:online', { userId: currentUser.id });
-            if (currentChatId && currentChatId !== SAVED_CHAT_ID) socket.emit('chat:join', { chatId: currentChatId });
+            joinedChats.clear();
+            joinAllMyChats();
           }
           loadFromServer(true).then(() => {
+            joinAllMyChats();
             renderChatList();
             if (currentChatId && currentChatId !== SAVED_CHAT_ID) {
               const chat = getChat(currentChatId);
@@ -2328,9 +2465,19 @@
             }
           });
         });
-        socket.on('disconnect', (reason) => { isConnected = false; updateSyncIndicator('offline', 'Оффлайн'); if (reason !== 'io client disconnect') scheduleReconnect(); });
+        socket.on('disconnect', (reason) => { isConnected = false; joinedChats.clear(); updateSyncIndicator('offline', 'Оффлайн'); if (reason !== 'io client disconnect') scheduleReconnect(); });
         socket.on('connect_error', () => { isConnected = false; updateSyncIndicator('offline', 'Ошибка подключения'); scheduleReconnect(); });
-        socket.io.on('reconnect', () => { loadFromServer(true).then(() => { renderChatList(); if (currentChatId && currentChatId !== SAVED_CHAT_ID) { const chat = getChat(currentChatId); if (chat) { sortMessages(chat); renderMessages(chat); updateChatHeader(); } } }); });
+        socket.io.on('reconnect', () => {
+          joinedChats.clear();
+          loadFromServer(true).then(() => {
+            joinAllMyChats();
+            renderChatList();
+            if (currentChatId && currentChatId !== SAVED_CHAT_ID) {
+              const chat = getChat(currentChatId);
+              if (chat) { sortMessages(chat); renderMessages(chat); updateChatHeader(); }
+            }
+          });
+        });
 
         socket.on('user:online', (data) => {
           if (!data || !data.userId) return;
@@ -2396,6 +2543,13 @@
           }
           saveState();
           renderChatList();
+          // Если пользователь стал участником нового чата — подписываемся
+          if (currentUser && isUserMemberOfChat(getChat(data.id), currentUser.id)) {
+            if (socket && isConnected && !joinedChats.has(data.id)) {
+              socket.emit('chat:join', { chatId: data.id });
+              joinedChats.add(data.id);
+            }
+          }
           if (currentChatId === data.id) {
             const updatedChat = getChat(data.id);
             if (updatedChat) { renderMessages(updatedChat); updateChatHeader(); updateChannelReadonlyNote(); }
@@ -2405,6 +2559,7 @@
           if (!data || !data.id) return;
           chats = chats.filter(c => c.id !== data.id);
           delete unread[data.id];
+          joinedChats.delete(data.id);
           if (currentChatId === data.id) { currentChatId = null; showPlaceholder(); }
           saveState();
           renderChatList();
@@ -2418,41 +2573,56 @@
           if (!m.id) m.id = genMessageId();
           if (typeof m.views !== 'number') m.views = 0;
           const chat = getChat(data.chatId);
-          if (chat) {
-            if (!chat.messages) chat.messages = [];
-            const isNewForMe = !chat.messages.some(x => x.id === m.id);
-            chat.messages = mergeMessages(chat.messages, [m]);
-            sortMessages(chat);
-            if (m.from !== currentUser.id && currentChatId !== data.chatId) {
-              unread[data.chatId] = (unread[data.chatId] || 0) + 1;
+          if (!chat) return;
+
+          if (!chat.messages) chat.messages = [];
+          const isNewForMe = !chat.messages.some(x => x.id === m.id);
+          chat.messages = mergeMessages(chat.messages, [m]);
+          sortMessages(chat);
+
+          const isActive = currentChatId === data.chatId;
+          const isOwn = m.from === currentUser.id;
+
+          if (isNewForMe && !isOwn && !isActive) {
+            // Увеличиваем счётчик для ЛЮБОГО типа чата: личный, группа, канал
+            unread[data.chatId] = (unread[data.chatId] || 0) + 1;
+          }
+          if (typingUsers[data.chatId] && typingUsers[data.chatId][m.from]) {
+            delete typingUsers[data.chatId][m.from];
+          }
+          if (isActive && !isOwn) markMessageRead(data.chatId, m);
+          saveState();
+
+          if (isActive) {
+            const wasNearBottom = isNearBottom();
+            // Помечаем «есть новые снизу», если пользователь не внизу
+            if (isNewForMe && !isOwn && !wasNearBottom) {
+              pendingScrollDownCount++;
             }
-            if (typingUsers[data.chatId] && typingUsers[data.chatId][m.from]) {
-              delete typingUsers[data.chatId][m.from];
-            }
-            if (currentChatId === data.chatId && m.from !== currentUser.id) markMessageRead(data.chatId, m);
-            saveState();
-            if (currentChatId === data.chatId) renderMessages(chat);
-            renderChatList();
-            updateFaviconBadge();
-            if (isNewForMe && m.from !== currentUser.id) {
-              const sender = getAccount(m.from);
-              const senderName = sender ? displayName(sender) : 'Кто-то';
-              const chatName = getChatName(chat);
-              const isGroup = chat.type === 'group';
-              const isChannel = chat.type === 'channel';
-              let title = senderName;
-              if (isGroup) title = `${chatName} · ${senderName}`;
-              if (isChannel) title = chatName;
-              const text = m.text
-                ? String(m.text).slice(0, 120)
-                : (m.media ? (m.media.kind === 'image' ? 'Фото' : m.media.kind === 'video' ? 'Видео' : m.media.kind === 'audio' ? 'Аудио' : 'Файл') : 'Новое сообщение');
-              showToastNotification({
-                chatId: data.chatId,
-                title,
-                text,
-                avatarUrl: isChannel ? resolveUrl(chat.channelMeta && chat.channelMeta.avatar) : resolveUrl(sender && sender.avatar)
-              });
-            }
+            renderMessages(chat, { keepScroll: true, newMessageId: isNewForMe ? m.id : null });
+            updateScrollDownBtn();
+          }
+          renderChatList();
+          updateFaviconBadge();
+
+          if (isNewForMe && !isOwn) {
+            const sender = getAccount(m.from);
+            const senderName = sender ? displayName(sender) : 'Кто-то';
+            const chatName = getChatName(chat);
+            const isGroup = chat.type === 'group';
+            const isChannel = chat.type === 'channel';
+            let title = senderName;
+            if (isGroup) title = `${chatName} · ${senderName}`;
+            if (isChannel) title = chatName;
+            const text = m.text
+              ? String(m.text).slice(0, 120)
+              : (m.media ? (m.media.kind === 'image' ? 'Фото' : m.media.kind === 'video' ? 'Видео' : m.media.kind === 'audio' ? 'Аудио' : 'Файл') : 'Новое сообщение');
+            showToastNotification({
+              chatId: data.chatId,
+              title,
+              text,
+              avatarUrl: isChannel ? resolveUrl(chat.channelMeta && chat.channelMeta.avatar) : resolveUrl(sender && sender.avatar)
+            });
           }
         });
         socket.on('message:reacted', (data) => {
@@ -2468,7 +2638,7 @@
           if (!msg.readBy) msg.readBy = {};
           msg.readBy[data.userId] = data.time || Date.now();
           saveState();
-          if (currentChatId === data.chatId) renderMessages(chat);
+          if (currentChatId === data.chatId) renderMessages(chat, { keepScroll: true });
         });
         socket.on('message:viewed', (data) => {
           if (!data || !data.chatId || !data.messageId) return;
@@ -2478,7 +2648,7 @@
           if (!msg) return;
           msg.views = Math.max(msg.views || 0, data.views || 0);
           saveState();
-          if (currentChatId === data.chatId) renderMessages(chat);
+          if (currentChatId === data.chatId) renderMessages(chat, { keepScroll: true });
         });
         socket.on('typing:start', (data) => {
           if (!data || !data.chatId || !data.userId) return;
@@ -2563,8 +2733,10 @@
       inputArea.style.display = 'none';
       chatHeaderActions.style.display = 'none';
       if (channelReadonlyNote) channelReadonlyNote.classList.remove('active');
+      if (scrollDownBtn) scrollDownBtn.classList.remove('show');
       hideMentionSuggestions();
       clearReplyTarget();
+      joinedChats.clear();
     }
     function updateChannelReadonlyNote() {
       if (!channelReadonlyNote) return;
@@ -2624,10 +2796,7 @@
         return;
       }
       const savedChat = getSavedChat();
-      const userChats = chats.filter(c => {
-        if (c.type === 'channel') return isChannelSubscriber(c, currentUser.id);
-        return c.members && c.members.includes(currentUser.id);
-      });
+      const userChats = chats.filter(c => isUserMemberOfChat(c, currentUser.id));
       const visibleChats = userChats.filter(c => {
         if (c.type === 'private' && (!c.messages || c.messages.length === 0)) return false;
         return true;
@@ -2707,6 +2876,7 @@
           const avatarInner = avatarUrl ? `<img src="${avatarUrl}" alt="">` : escapeHtml(acc ? displayName(acc).charAt(0).toUpperCase() : '?');
           avatarBlock = `<div class="avatar-wrap"><div class="avatar">${avatarInner}</div><div class="online-dot ${dotActive}"></div></div>`;
         }
+        // Счётчик непрочитанных теперь показывается для всех типов чатов
         const cnt = unread[chat.id] || 0;
         const unreadHtml = cnt > 0 ? `<div class="unread-badge ${isMuted ? 'muted' : ''}">${cnt > 99 ? '99+' : cnt}</div>` : '';
         const muteIcon = isMuted ? '<i class="fas fa-bell-slash mute-icon"></i>' : '';
@@ -2754,6 +2924,8 @@
       if (draftChat) draftChat = null;
       currentChatId = chatId;
       if (unread[chatId]) { delete unread[chatId]; saveState(); }
+      pendingScrollDownCount = 0;
+      if (scrollDownBtn) scrollDownBtn.classList.remove('show');
       sortMessages(chat);
       renderChatList();
       forceScrollBottom = true;
@@ -2769,7 +2941,10 @@
       messageInput.focus();
       if (isMobile()) openMobileChat();
       if (socket && isConnected && chatId !== SAVED_CHAT_ID) {
-        socket.emit('chat:join', { chatId });
+        if (!joinedChats.has(chatId)) {
+          socket.emit('chat:join', { chatId });
+          joinedChats.add(chatId);
+        }
         chat.messages.forEach(m => {
           if (m.from !== currentUser.id) markMessageRead(chatId, m);
           if (chat.type === 'channel') markMessageViewed(chatId, m);
@@ -2790,6 +2965,7 @@
       chatHeaderActions.style.display = 'flex';
       chatSettingsBtn.style.display = 'none';
       if (channelReadonlyNote) channelReadonlyNote.classList.remove('active');
+      if (scrollDownBtn) scrollDownBtn.classList.remove('show');
       updateDraftChatHeader();
       messageInput.focus();
       if (isMobile()) openMobileChat();
@@ -2822,6 +2998,7 @@
       await syncChatToServer(newChat.id);
       if (socket && isConnected) {
         socket.emit('chat:join', { chatId: newChat.id });
+        joinedChats.add(newChat.id);
         socket.emit('message:send', { chatId: newChat.id, message: firstMessage });
       }
       draftChat = null;
@@ -2835,6 +3012,7 @@
       return newChat.id;
     }
 
+    // Рендер одного сообщения. Для видео — особый вид с превью и кнопкой play.
     function renderSingleMessage(msg, isDraft) {
       const isOwn = msg.from === currentUser.id;
       const sender = getAccount(msg.from);
@@ -2872,14 +3050,25 @@
         const m = msg.media;
         const src = m.url ? resolveUrl(m.url) : m.data;
         if (src) {
-          if (m.kind === 'image') contentHtml += `<div class="media-wrap"><img src="${src}" alt="${escapeHtml(m.name || '')}" loading="lazy"></div>`;
-          else if (m.kind === 'video') contentHtml += `<div class="media-wrap"><video src="${src}" controls preload="metadata"></video></div>`;
-          else if (m.kind === 'audio') contentHtml += `<div class="media-wrap"><audio src="${src}" controls preload="metadata"></audio></div>`;
-          else contentHtml += `
-            <a class="media-file" href="${src}" download="${escapeHtml(m.name || 'file')}">
-              <i class="fas fa-file"></i>
-              <div><div class="fname">${escapeHtml(m.name || 'Файл')}</div><div class="fsize">${formatSize(m.size || 0)}</div></div>
-            </a>`;
+          if (m.kind === 'image') {
+            contentHtml += `<div class="media-wrap"><img src="${src}" alt="${escapeHtml(m.name || '')}" loading="lazy"></div>`;
+          } else if (m.kind === 'video') {
+            // Новый вид: превью + кнопка play. Controls включатся только после клика.
+            contentHtml += `
+              <div class="video-wrap" data-src="${escapeHtml(src)}">
+                <div class="video-poster" style="background-image: url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2240%22 height=%2240%22><rect width=%2240%22 height=%2240%22 fill=%22%23171e30%22/></svg>')"></div>
+                <div class="video-play-btn"><i class="fas fa-play"></i></div>
+                <div class="video-duration-badge">0:00</div>
+              </div>`;
+          } else if (m.kind === 'audio') {
+            contentHtml += `<div class="media-wrap"><audio src="${src}" controls preload="metadata"></audio></div>`;
+          } else {
+            contentHtml += `
+              <a class="media-file" href="${src}" download="${escapeHtml(m.name || 'file')}">
+                <i class="fas fa-file"></i>
+                <div><div class="fname">${escapeHtml(m.name || 'Файл')}</div><div class="fsize">${formatSize(m.size || 0)}</div></div>
+              </a>`;
+          }
         }
       }
       if (msg.text) contentHtml += `<div class="msg-text">${renderTextWithMentions(msg.text)}</div>`;
@@ -2926,6 +3115,57 @@
           }
         };
       }
+      // Видео: ленивая подгрузка метаданных и play
+      const videoWrap = row.querySelector('.video-wrap');
+      if (videoWrap && !isDraft) {
+        const src = videoWrap.dataset.src;
+        let loaded = false;
+        const loadMeta = () => {
+          if (loaded) return;
+          loaded = true;
+          const v = document.createElement('video');
+          v.preload = 'metadata';
+          v.muted = true;
+          v.src = src;
+          v.addEventListener('loadedmetadata', () => {
+            const w = v.videoWidth || 16;
+            const h = v.videoHeight || 9;
+            const ratio = w / h;
+            videoWrap.style.aspectRatio = `${w} / ${h}`;
+            // Ограничим разумно
+            const maxW = 320;
+            const displayW = Math.min(maxW, w);
+            const displayH = displayW / ratio;
+            videoWrap.style.maxWidth = displayW + 'px';
+            const dur = v.duration;
+            const badge = videoWrap.querySelector('.video-duration-badge');
+            if (badge) badge.textContent = formatDuration(dur);
+          });
+        };
+        // Грузим метаданные лениво, когда видео попадает в viewport
+        if ('IntersectionObserver' in window) {
+          const io = new IntersectionObserver((entries) => {
+            entries.forEach(en => { if (en.isIntersecting) { loadMeta(); io.disconnect(); } });
+          }, { rootMargin: '100px' });
+          io.observe(videoWrap);
+        } else {
+          loadMeta();
+        }
+        videoWrap.addEventListener('click', () => {
+          if (videoWrap.classList.contains('playing')) return;
+          videoWrap.classList.add('playing');
+          const v = document.createElement('video');
+          v.src = src;
+          v.controls = true;
+          v.autoplay = true;
+          v.playsInline = true;
+          v.setAttribute('playsinline', '');
+          v.style.cssText = 'width:100%; height:100%; display:block; object-fit:contain; background:#000; border-radius:12px;';
+          videoWrap.innerHTML = '';
+          videoWrap.appendChild(v);
+          v.play().catch(() => {});
+        });
+      }
       const messageEl = row.querySelector('.message');
       if (messageEl && !isDraft) {
         let longPressTimer = null;
@@ -2937,7 +3177,7 @@
         };
         messageEl.addEventListener('contextmenu', (e) => { e.preventDefault(); openMenu(); });
         messageEl.addEventListener('touchstart', (e) => {
-          if (e.target.closest('a') || e.target.closest('video') || e.target.closest('audio')) return;
+          if (e.target.closest('a') || e.target.closest('video') || e.target.closest('audio') || e.target.closest('.video-wrap')) return;
           longPressTriggered = false;
           longPressTimer = setTimeout(() => { longPressTriggered = true; openMenu(); }, 450);
         }, { passive: true });
@@ -2987,14 +3227,27 @@
         };
       });
     }
-    function renderMessages(chat) {
-      const prevScrollTop = messagesArea.scrollTop;
-      const prevScrollHeight = messagesArea.scrollHeight;
-      const prevClientHeight = messagesArea.clientHeight;
-      const distanceFromBottom = prevScrollHeight - prevScrollTop - prevClientHeight;
-      const wasAtBottom = distanceFromBottom < 40;
+
+    /**
+     * renderMessages(chat, options)
+     *   options.keepScroll — не трогать скролл, сохранить позицию
+     *   options.newMessageId — id нового сообщения (для anchor)
+     * Если не внизу и не keepScroll — пользователь сам увидит кнопку «вниз».
+     */
+    function renderMessages(chat, options) {
+      options = options || {};
+      const keepScroll = !!options.keepScroll;
+
+      // 1. Запомнить anchor до перерисовки, если не «forceScrollBottom»
+      let anchor = null;
+      const wasAtBottom = isNearBottom();
+      if (!forceScrollBottom && !wasAtBottom) {
+        anchor = captureScrollAnchor();
+      }
+
       if (chat.type === 'channel') messagesArea.classList.add('channel-view');
       else messagesArea.classList.remove('channel-view');
+
       messagesArea.innerHTML = '';
       if (chat.type === 'saved' && (!chat.messages || chat.messages.length === 0)) {
         messagesArea.innerHTML = `
@@ -3012,13 +3265,23 @@
       chat.messages.forEach(msg => renderSingleMessage(msg, false));
       attachMessageHandlers();
       renderTypingIndicator();
-      if (forceScrollBottom || wasAtBottom) messagesArea.scrollTop = messagesArea.scrollHeight;
-      else {
-        const newScrollHeight = messagesArea.scrollHeight;
-        messagesArea.scrollTop = newScrollHeight - prevClientHeight - distanceFromBottom;
+
+      // 2. Восстановление позиции скролла
+      if (forceScrollBottom) {
+        messagesArea.scrollTop = messagesArea.scrollHeight;
+        pendingScrollDownCount = 0;
+      } else if (anchor) {
+        restoreScrollAnchor(anchor);
+      } else if (wasAtBottom && !keepScroll) {
+        messagesArea.scrollTop = messagesArea.scrollHeight;
+      } else if (wasAtBottom && keepScroll) {
+        messagesArea.scrollTop = messagesArea.scrollHeight;
       }
+      // если был не внизу и не удалось восстановить — оставляем как есть
+
       forceScrollBottom = false;
       animateMessagesNextRender = false;
+      updateScrollDownBtn();
     }
 
     // ---------- REPLY / FORWARD ----------
@@ -3167,7 +3430,7 @@
         else delete msg.__pending;
       } catch (e) { msg.__failed = true; delete msg.__pending; }
       saveState();
-      renderMessages(chat);
+      renderMessages(chat, { keepScroll: true });
       renderChatList();
     }
 
@@ -3254,6 +3517,23 @@
       }
       if (e.key === 'Enter' && !mentionSuggestions.classList.contains('active')) { e.preventDefault(); sendMessage(); }
     });
+
+    // Скролл-мониторинг
+    messagesArea.addEventListener('scroll', () => {
+      if (isNearBottom()) {
+        pendingScrollDownCount = 0;
+        if (scrollDownBtn) scrollDownBtn.classList.remove('show');
+      } else {
+        updateScrollDownBtn();
+      }
+    });
+    if (scrollDownBtn) {
+      scrollDownBtn.addEventListener('click', () => {
+        messagesArea.scrollTo({ top: messagesArea.scrollHeight, behavior: 'smooth' });
+        pendingScrollDownCount = 0;
+        setTimeout(() => { if (scrollDownBtn) scrollDownBtn.classList.remove('show'); }, 300);
+      });
+    }
 
     // ---------- ГАЛЕРЕЯ ----------
     function initMediaPickerModal() {
@@ -3351,12 +3631,10 @@
       }
     }
 
-    // Отправка файла: сначала POST /api/upload, потом message:send с URL
     async function sendOneMediaFile(file, text, targetChatId) {
       if (!currentUser) return;
       if (file.size > MAX_MEDIA_SIZE) { alert('Файл слишком большой'); return; }
 
-      // Черновик
       if (draftChat && !currentChatId) {
         showUpload(true, 'Загрузка файла...', 5);
         try {
@@ -3396,7 +3674,7 @@
 
         const media = {
           kind: getMediaKind(uploaded.mime || file.type),
-          url: uploaded.url,             // <-- только URL, base64 не храним
+          url: uploaded.url,
           name: uploaded.name || file.name,
           size: uploaded.size || file.size,
           mime: uploaded.mime || file.type || 'application/octet-stream'
@@ -3440,7 +3718,7 @@
         else delete msg.__pending;
 
         saveState();
-        if (currentChatId === chat.id) renderMessages(chat);
+        if (currentChatId === chat.id) renderMessages(chat, { keepScroll: true });
         renderChatList();
         showUpload(false);
       } catch (err) {
@@ -3477,8 +3755,12 @@
         saveState();
         startPeriodicSync();
         startHeartbeat();
-        if (socket && isConnected) socket.emit('user:online', { userId: currentUser.id });
-        loadFromServer(true).then(() => renderChatList());
+        if (socket && isConnected) {
+          socket.emit('user:online', { userId: currentUser.id });
+          joinedChats.clear();
+          joinAllMyChats();
+        }
+        loadFromServer(true).then(() => { joinAllMyChats(); renderChatList(); });
         requestNotificationPermission();
         return { ok: true };
       }
@@ -3500,8 +3782,12 @@
         saveState();
         startPeriodicSync();
         startHeartbeat();
-        if (socket && isConnected) socket.emit('user:online', { userId: currentUser.id });
-        loadFromServer(true).then(() => renderChatList());
+        if (socket && isConnected) {
+          socket.emit('user:online', { userId: currentUser.id });
+          joinedChats.clear();
+          joinAllMyChats();
+        }
+        loadFromServer(true).then(() => { joinAllMyChats(); renderChatList(); });
         requestNotificationPermission();
         return { ok: true };
       }
@@ -3516,6 +3802,7 @@
       if (currentUser) delete onlineUsers[currentUser.id];
       currentUser = null; currentChatId = null; draftChat = null;
       unread = {}; clearReplyTarget();
+      joinedChats.clear();
       updateUIAfterAuth(); showPlaceholder(); renderChatList(); saveState();
       localStorage.removeItem('mzgram_chat');
       closeMobileChat();
@@ -3575,6 +3862,7 @@
         const newChat = { id: 'ch' + generateId(), name, type: 'group', members: [currentUser.id], messages: [] };
         chats.push(newChat);
         await syncChatToServer(newChat.id);
+        if (socket && isConnected) { socket.emit('chat:join', { chatId: newChat.id }); joinedChats.add(newChat.id); }
         closeNewChatModal();
         renderChatList();
         openChat(newChat.id);
@@ -3602,6 +3890,7 @@
         };
         chats.push(newChat);
         await syncChatToServer(newChat.id);
+        if (socket && isConnected) { socket.emit('chat:join', { chatId: newChat.id }); joinedChats.add(newChat.id); }
         closeNewChatModal();
         renderChatList();
         openChat(newChat.id);
@@ -3858,7 +4147,10 @@
         if (!chat.members.includes(currentUser.id)) chat.members.push(currentUser.id);
         saveState();
         await syncChatToServer(channelInfoId);
-        if (socket && isConnected) socket.emit('channel:subscribe', { channelId: channelInfoId, userId: currentUser.id });
+        if (socket && isConnected) {
+          socket.emit('channel:subscribe', { channelId: channelInfoId, userId: currentUser.id });
+          if (!joinedChats.has(channelInfoId)) { socket.emit('chat:join', { chatId: channelInfoId }); joinedChats.add(channelInfoId); }
+        }
         showToast('Вы подписались');
       }
       updateChannelSubscribeBtn();
@@ -3901,7 +4193,7 @@
         updateUIAfterAuth();
         openProfile();
         renderChatList();
-        if (currentChatId) { const chat = getChat(currentChatId); if (chat) renderMessages(chat); }
+        if (currentChatId) { const chat = getChat(currentChatId); if (chat) renderMessages(chat, { keepScroll: true }); }
       } else alert('Не удалось изменить ник');
     }
     async function uploadAvatar(file) {
@@ -3917,7 +4209,7 @@
           updateUIAfterAuth();
           openProfile();
           renderChatList();
-          if (currentChatId) { const chat = getChat(currentChatId); if (chat) renderMessages(chat); }
+          if (currentChatId) { const chat = getChat(currentChatId); if (chat) renderMessages(chat, { keepScroll: true }); }
         } else alert('Не удалось загрузить аватар');
       } catch (err) { alert('Ошибка: ' + err.message); }
     }
@@ -3930,7 +4222,7 @@
         updateUIAfterAuth();
         openProfile();
         renderChatList();
-        if (currentChatId) { const chat = getChat(currentChatId); if (chat) renderMessages(chat); }
+        if (currentChatId) { const chat = getChat(currentChatId); if (chat) renderMessages(chat, { keepScroll: true }); }
       }
     }
     async function uploadChannelAvatar(file) {
@@ -4257,10 +4549,11 @@
         if (!document.hidden) {
           if (!isConnected) scheduleReconnect();
           loadFromServer(true).then(() => {
+            joinAllMyChats();
             renderChatList();
             if (currentChatId && currentChatId !== SAVED_CHAT_ID) {
               const chat = getChat(currentChatId);
-              if (chat) { sortMessages(chat); renderMessages(chat); updateChatHeader(); }
+              if (chat) { sortMessages(chat); renderMessages(chat, { keepScroll: true }); updateChatHeader(); }
             }
           });
           updateFaviconBadge();
