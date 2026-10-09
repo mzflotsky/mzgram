@@ -1,7 +1,9 @@
 // ============================================================
-// Mzgram server — REST API + WebSocket + раздача HTML + медиа + GIF
-// Версия для деплоя на Render/Railway
+// Mzgram server — REST API + WebSocket + Supabase Storage
+// Версия для деплоя на Render/Railway с постоянной БД
 // ============================================================
+
+require('dotenv').config();
 
 const express = require('express');
 const http = require('http');
@@ -12,6 +14,7 @@ const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
 const multer = require('multer');
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 app.use(cors());
@@ -24,6 +27,26 @@ const io = new Server(server, {
   pingInterval: 25000,
   pingTimeout: 20000
 });
+
+// ============================================================
+// SUPABASE КЛИЕНТ
+// ============================================================
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
+  console.error('ОШИБКА: Не заданы SUPABASE_URL и/или SUPABASE_SERVICE_KEY в .env');
+  process.exit(1);
+}
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY,
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false
+    }
+  }
+);
 
 // ---------- ПУТИ (адаптированы под Render) ----------
 const TMP_DIR = os.tmpdir();
@@ -41,14 +64,12 @@ function findHtmlFile() {
   return candidates[0];
 }
 
-const DATA_FILE = path.join(TMP_DIR, 'mzgram-data.json');
-const LOG_FILE  = path.join(TMP_DIR, 'mzgram.log');
+const LOG_FILE = path.join(TMP_DIR, 'mzgram.log');
 const HTML_FILE = findHtmlFile();
 const MEDIA_DIR = path.join(TMP_DIR, 'server-media');
 const AVATARS_DIR = path.join(MEDIA_DIR, 'avatars');
 const CHANNEL_AVATARS_DIR = path.join(MEDIA_DIR, 'channel-avatars');
 const GIFS_DIR = path.join(MEDIA_DIR, 'gifs');
-const GIFS_FILE = path.join(TMP_DIR, 'mzgram-gifs.json');
 
 [MEDIA_DIR, AVATARS_DIR, CHANNEL_AVATARS_DIR, GIFS_DIR].forEach(dir => {
   try {
@@ -79,6 +100,7 @@ function log(...args) {
 const PBKDF2_ITERATIONS = 100000;
 const PBKDF2_KEYLEN = 32;
 const PBKDF2_DIGEST = 'sha256';
+
 function hashPassword(password, salt) {
   const saltBuf = salt ? Buffer.from(salt, 'hex') : crypto.randomBytes(16);
   const hash = crypto.pbkdf2Sync(password, saltBuf, PBKDF2_ITERATIONS, PBKDF2_KEYLEN, PBKDF2_DIGEST);
@@ -101,6 +123,7 @@ function sanitizeAccounts(list) { return (list || []).map(sanitizeAccount); }
 // ---------- ВАЛИДАЦИЯ ----------
 const LOGIN_REGEX = /^[a-z0-9_\-]{3,32}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 function validateNickname(nick) {
   if (typeof nick !== 'string') return null;
   const cleaned = nick.replace(/[<>]/g, '').trim().slice(0, 30);
@@ -138,7 +161,7 @@ function generateChannelLoginFromName(name) {
   return base;
 }
 
-// ---------- МЕДИА (из data URL — legacy + миграция) ----------
+// ---------- МЕДИА ----------
 function saveMediaFromDataUrl(dataUrl, prefix = 'file') {
   if (typeof dataUrl !== 'string') return null;
   const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
@@ -222,7 +245,7 @@ function processIncomingMessages(messages) {
 }
 
 // ============================================================
-// MULTER — загрузка медиа (multipart/form-data)
+// MULTER — загрузка медиа
 // ============================================================
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, MEDIA_DIR),
@@ -234,12 +257,9 @@ const storage = multer.diskStorage({
 });
 const upload = multer({
   storage,
-  limits: { fileSize: 30 * 1024 * 1024 } // 30 МБ
+  limits: { fileSize: 30 * 1024 * 1024 }
 });
 
-// ============================================================
-// MULTER — загрузка GIF
-// ============================================================
 const gifStorage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, GIFS_DIR),
   filename: (req, file, cb) => {
@@ -259,126 +279,166 @@ const uploadGif = multer({
 });
 
 // ============================================================
-// ХРАНИЛИЩЕ
+// ХРАНИЛИЩЕ (Supabase)
 // ============================================================
 let accounts = [];
 let chats = [];
 let gifs = [];
 
-function loadGifs() {
+let savePending = false;
+let saveTimeout = null;
+
+async function loadData() {
   try {
-    if (fs.existsSync(GIFS_FILE)) {
-      const raw = fs.readFileSync(GIFS_FILE, 'utf8');
-      const arr = JSON.parse(raw);
-      return Array.isArray(arr) ? arr : [];
-    }
-  } catch (e) { log('Ошибка чтения gifs.json:', e.message); }
-  return [];
-}
-function saveGifs(arr) {
-  try { fs.writeFileSync(GIFS_FILE, JSON.stringify(arr, null, 2)); }
-  catch (e) { log('Ошибка сохранения gifs.json:', e.message); }
-}
+    const { data, error } = await supabase
+      .from('mzgram_store')
+      .select('data')
+      .eq('id', 'singleton')
+      .single();
 
-function loadData() {
-  try {
-    if (fs.existsSync(DATA_FILE)) {
-      const raw = fs.readFileSync(DATA_FILE, 'utf8');
-      const data = JSON.parse(raw);
-      accounts = Array.isArray(data.accounts) ? data.accounts : [];
-      chats = Array.isArray(data.chats) ? data.chats : [];
-
-      let mAcc = 0;
-      accounts.forEach(a => {
-        if (!a.nickname) a.nickname = a.name || a.login || 'User';
-        if (a.password && !a.passwordHash) {
-          const { hash, salt } = hashPassword(a.password);
-          a.passwordHash = hash; a.passwordSalt = salt;
-          delete a.password; mAcc++;
-        }
-        if (a.avatar && a.avatar.startsWith('data:')) {
-          const url = saveAvatarFromDataUrl(a.avatar);
-          if (url) a.avatar = url;
-        }
-      });
-
-      let mMedia = 0, mIds = 0, mChannels = 0, mChannelLogins = 0, mPublicFlags = 0;
-      const usedChannelLogins = new Set();
-      chats.forEach(c => {
-        if (c.type === 'channel' && c.channelMeta && c.channelMeta.login) {
-          usedChannelLogins.add(c.channelMeta.login);
-        }
-      });
-      chats.forEach(c => {
-        if (c.type === 'channel') {
-          if (!c.channelMeta) {
-            c.channelMeta = {
-              admins: c.admins || c.members.slice(0,1) || [],
-              subscribers: c.members.slice(),
-              linkedGroupId: null,
-              avatar: null,
-              login: null,
-              isPublic: false
-            };
-            mChannels++;
-          }
-          if (!c.channelMeta.subscribers) c.channelMeta.subscribers = c.members.slice();
-          if (!c.channelMeta.admins) c.channelMeta.admins = c.members.slice(0,1);
-          if (typeof c.channelMeta.linkedGroupId === 'undefined') c.channelMeta.linkedGroupId = null;
-          if (typeof c.channelMeta.avatar === 'undefined') c.channelMeta.avatar = null;
-          if (typeof c.channelMeta.isPublic === 'undefined') {
-            c.channelMeta.isPublic = false;
-            mPublicFlags++;
-          }
-          if (!c.channelMeta.login) {
-            let base = generateChannelLoginFromName(c.name);
-            let candidate = base;
-            let attempt = 1;
-            while (usedChannelLogins.has(candidate)) {
-              candidate = base + '_' + attempt;
-              attempt++;
-            }
-            c.channelMeta.login = candidate;
-            usedChannelLogins.add(candidate);
-            mChannelLogins++;
-          }
-        }
-        if (Array.isArray(c.messages)) {
-          c.messages.forEach(m => {
-            if (m.time) m.time = toIsoUtc(m.time);
-            if (!m.reactions) m.reactions = {};
-            if (!m.id) { m.id = generateMessageId(); mIds++; }
-            if (typeof m.views !== 'number') m.views = 0;
-            if (m.media && m.media.data && m.media.data.startsWith('data:')) {
-              convertMessageMedia(m); mMedia++;
-            }
-          });
-        }
-      });
-
-      if (mAcc > 0 || mMedia > 0 || mIds > 0 || mChannels > 0 || mChannelLogins > 0 || mPublicFlags > 0) {
-        log(`Миграция: паролей=${mAcc}, медиа=${mMedia}, id=${mIds}, каналов=${mChannels}, логинов каналов=${mChannelLogins}, isPublic=${mPublicFlags}`);
-        persist();
-      }
-      log(`Загружено: аккаунтов=${accounts.length}, чатов=${chats.length}`);
-    } else {
-      log('data.json не найден — стартуем с пустой базы');
+    if (error) {
+      log('Ошибка загрузки из Supabase:', error.message);
       accounts = [];
       chats = [];
-      persist();
+      gifs = [];
+      // Создаём запись, если её нет
+      await supabase.from('mzgram_store').upsert(
+        { id: 'singleton', data: { accounts: [], chats: [], gifs: [] } },
+        { onConflict: 'id' }
+      );
+      return;
     }
+
+    const store = (data && data.data) || {};
+    accounts = Array.isArray(store.accounts) ? store.accounts : [];
+    chats = Array.isArray(store.chats) ? store.chats : [];
+    gifs = Array.isArray(store.gifs) ? store.gifs : [];
+
+    // ---------- Миграция старых данных ----------
+    let mAcc = 0;
+    accounts.forEach(a => {
+      if (!a.nickname) a.nickname = a.name || a.login || 'User';
+      if (a.password && !a.passwordHash) {
+        const { hash, salt } = hashPassword(a.password);
+        a.passwordHash = hash;
+        a.passwordSalt = salt;
+        delete a.password;
+        mAcc++;
+      }
+    });
+
+    let mMedia = 0, mIds = 0, mChannels = 0, mChannelLogins = 0, mPublicFlags = 0;
+    const usedChannelLogins = new Set();
+    chats.forEach(c => {
+      if (c.type === 'channel' && c.channelMeta && c.channelMeta.login) {
+        usedChannelLogins.add(c.channelMeta.login);
+      }
+    });
+
+    chats.forEach(c => {
+      if (c.type === 'channel') {
+        if (!c.channelMeta) {
+          c.channelMeta = {
+            admins: c.admins || c.members.slice(0, 1) || [],
+            subscribers: c.members.slice(),
+            linkedGroupId: null,
+            avatar: null,
+            login: null,
+            isPublic: false
+          };
+          mChannels++;
+        }
+        if (!c.channelMeta.subscribers) c.channelMeta.subscribers = c.members.slice();
+        if (!c.channelMeta.admins) c.channelMeta.admins = c.members.slice(0, 1);
+        if (typeof c.channelMeta.linkedGroupId === 'undefined') c.channelMeta.linkedGroupId = null;
+        if (typeof c.channelMeta.avatar === 'undefined') c.channelMeta.avatar = null;
+        if (typeof c.channelMeta.isPublic === 'undefined') {
+          c.channelMeta.isPublic = false;
+          mPublicFlags++;
+        }
+        if (!c.channelMeta.login) {
+          let base = generateChannelLoginFromName(c.name);
+          let candidate = base;
+          let attempt = 1;
+          while (usedChannelLogins.has(candidate)) {
+            candidate = base + '_' + attempt;
+            attempt++;
+          }
+          c.channelMeta.login = candidate;
+          usedChannelLogins.add(candidate);
+          mChannelLogins++;
+        }
+      }
+      if (Array.isArray(c.messages)) {
+        c.messages.forEach(m => {
+          if (m.time) m.time = toIsoUtc(m.time);
+          if (!m.reactions) m.reactions = {};
+          if (!m.id) { m.id = generateMessageId(); mIds++; }
+          if (typeof m.views !== 'number') m.views = 0;
+          if (m.media && m.media.data && m.media.data.startsWith('data:')) {
+            convertMessageMedia(m);
+            mMedia++;
+          }
+        });
+      }
+    });
+
+    if (mAcc > 0 || mMedia > 0 || mIds > 0 || mChannels > 0 || mChannelLogins > 0 || mPublicFlags > 0) {
+      log(`Миграция: паролей=${mAcc}, медиа=${mMedia}, id=${mIds}, каналов=${mChannels}, логинов каналов=${mChannelLogins}, isPublic=${mPublicFlags}`);
+      await persist();
+    }
+
+    log(`Загружено из Supabase: аккаунтов=${accounts.length}, чатов=${chats.length}, GIF=${gifs.length}`);
   } catch (err) {
-    log('ОШИБКА загрузки:', err.message);
+    log('КРИТИЧЕСКАЯ ОШИБКА загрузки:', err.message);
     accounts = [];
     chats = [];
+    gifs = [];
   }
-  gifs = loadGifs();
-  log(`Загружено GIF: ${gifs.length}`);
 }
-function persist() {
+
+// Дебаунс сохранения — не чаще раза в 500 мс
+function schedulePersist() {
+  if (saveTimeout) clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(() => { persist(); }, 500);
+}
+
+async function persist() {
+  if (savePending) return;
+  savePending = true;
   try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify({ accounts, chats }, null, 2));
-  } catch (err) { log('ОШИБКА сохранения:', err.message); }
+    const payload = { accounts, chats, gifs };
+    const { error } = await supabase
+      .from('mzgram_store')
+      .upsert(
+        { id: 'singleton', data: payload, updated_at: new Date().toISOString() },
+        { onConflict: 'id' }
+      );
+    if (error) log('Ошибка сохранения в Supabase:', error.message);
+  } catch (err) {
+    log('КРИТИЧЕСКАЯ ОШИБКА сохранения:', err.message);
+  } finally {
+    savePending = false;
+  }
+}
+
+// ============================================================
+// KEEP-ALIVE — предотвращает паузу проекта Supabase
+// ============================================================
+function startKeepAlive() {
+  const PING_INTERVAL = 12 * 60 * 60 * 1000; // 12 часов
+
+  const ping = async () => {
+    try {
+      await supabase.from('mzgram_store').select('id').limit(1);
+      log('Supabase ping OK — проект активен');
+    } catch (e) {
+      log('Supabase ping failed:', e.message);
+    }
+  };
+
+  ping();
+  setInterval(ping, PING_INTERVAL);
 }
 
 // ============================================================
@@ -398,7 +458,7 @@ app.get('/index.html', (req, res) => {
 });
 
 // ============================================================
-// ЗАГРУЗКА МЕДИА (multipart/form-data)
+// ЗАГРУЗКА МЕДИА
 // ============================================================
 app.post('/api/upload', upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ ok: false, error: 'no_file' });
@@ -434,7 +494,7 @@ app.post('/api/gifs/upload', uploadGif.single('file'), (req, res) => {
   };
   gifs.unshift(entry);
   if (gifs.length > 300) gifs = gifs.slice(0, 300);
-  saveGifs(gifs);
+  schedulePersist();
   io.emit('gifs:updated', gifs);
   log(`Загружена GIF: ${url} (${req.file.size} байт)`);
   res.json({ ok: true, gif: entry });
@@ -445,21 +505,23 @@ app.post('/api/gifs/:id/delete', (req, res) => {
   const idx = gifs.findIndex(g => g.id === id);
   if (idx < 0) return res.status(404).json({ ok: false, error: 'not_found' });
   gifs.splice(idx, 1);
-  saveGifs(gifs);
+  schedulePersist();
   io.emit('gifs:updated', gifs);
   res.json({ ok: true });
 });
 
-// Health-check для Render
+// ============================================================
+// HEALTH-CHECK
+// ============================================================
 app.get('/api/status', (req, res) => {
   res.json({
     ok: true,
+    storage: 'supabase',
     accounts: accounts.length,
     chats: chats.length,
     gifs: gifs.length,
     uptime: Math.round(process.uptime()),
     clients: io.engine.clientsCount,
-    dataFileSize: fs.existsSync(DATA_FILE) ? fs.statSync(DATA_FILE).size : 0,
     mediaCount: fs.existsSync(MEDIA_DIR) ? fs.readdirSync(MEDIA_DIR).length : 0,
     gifsCount: fs.existsSync(GIFS_DIR) ? fs.readdirSync(GIFS_DIR).length : 0,
     htmlFile: HTML_FILE,
@@ -494,7 +556,7 @@ app.post('/api/accounts/register', (req, res) => {
     avatar: avatarUrl, createdAt: Date.now()
   };
   accounts.push(newUser);
-  persist();
+  schedulePersist();
   io.emit('accounts:updated', sanitizeAccounts(accounts));
   log(`Регистрация: ${loginLower}`);
   res.json({ ok: true, account: sanitizeAccount(newUser) });
@@ -531,7 +593,7 @@ app.put('/api/accounts/:id', (req, res) => {
     if (accounts.some((a, i) => i !== idx && a.email === emailLower)) return res.status(409).json({ ok: false, error: 'email_taken' });
     accounts[idx].email = emailLower;
   }
-  persist();
+  schedulePersist();
   io.emit('accounts:updated', sanitizeAccounts(accounts));
   res.json({ ok: true, account: sanitizeAccount(accounts[idx]) });
 });
@@ -545,7 +607,7 @@ app.post('/api/accounts/change-password', (req, res) => {
   if (!verifyPassword(oldPassword, accounts[idx].passwordHash, accounts[idx].passwordSalt)) return res.status(401).json({ ok: false, error: 'wrong_password' });
   const { hash, salt } = hashPassword(newPassword);
   accounts[idx].passwordHash = hash; accounts[idx].passwordSalt = salt;
-  persist();
+  schedulePersist();
   res.json({ ok: true });
 });
 
@@ -557,7 +619,7 @@ app.post('/api/accounts/request-reset', (req, res) => {
   if (!acc) return res.json({ ok: true });
   const code = String(Math.floor(100000 + Math.random() * 900000));
   acc.resetCode = code; acc.resetCodeExpires = Date.now() + 15 * 60 * 1000;
-  persist();
+  schedulePersist();
   log(`=== КОД для ${emailLower}: ${code} ===`);
   res.json({ ok: true, code, note: 'Код в консоли сервера (для теста)' });
 });
@@ -574,7 +636,7 @@ app.post('/api/accounts/reset-password', (req, res) => {
   const { hash, salt } = hashPassword(newPassword);
   acc.passwordHash = hash; acc.passwordSalt = salt;
   delete acc.resetCode; delete acc.resetCodeExpires;
-  persist();
+  schedulePersist();
   res.json({ ok: true });
 });
 
@@ -584,7 +646,7 @@ app.post('/api/accounts/reset-password', (req, res) => {
 app.get('/api/version', (req, res) => {
   const data = JSON.stringify({
     a: accounts.length,
-    c: chats.map(c => ({ id: c.id, m: (c.messages||[]).length, u: c.updatedAt || 0 })),
+    c: chats.map(c => ({ id: c.id, m: (c.messages || []).length, u: c.updatedAt || 0 })),
     g: gifs.length
   });
   const hash = crypto.createHash('md5').update(data).digest('hex');
@@ -602,18 +664,12 @@ app.put('/api/chats/:id', (req, res) => {
   if (incoming.type === 'channel' && incoming.channelMeta) {
     if (incoming.channelMeta.login) {
       const cleanLogin = validateChannelLogin(incoming.channelMeta.login);
-      if (!cleanLogin) {
-        return res.status(400).json({ ok: false, error: 'invalid_channel_login' });
-      }
+      if (!cleanLogin) return res.status(400).json({ ok: false, error: 'invalid_channel_login' });
       const taken = chats.some(c => c.id !== id && c.type === 'channel' && c.channelMeta && c.channelMeta.login === cleanLogin);
-      if (taken) {
-        return res.status(409).json({ ok: false, error: 'channel_login_taken' });
-      }
+      if (taken) return res.status(409).json({ ok: false, error: 'channel_login_taken' });
       incoming.channelMeta.login = cleanLogin;
     }
-    if (typeof incoming.channelMeta.isPublic === 'undefined') {
-      incoming.channelMeta.isPublic = false;
-    }
+    if (typeof incoming.channelMeta.isPublic === 'undefined') incoming.channelMeta.isPublic = false;
     if (incoming.channelMeta.avatar && typeof incoming.channelMeta.avatar === 'string' && incoming.channelMeta.avatar.startsWith('data:')) {
       const url = saveChannelAvatarFromDataUrl(incoming.channelMeta.avatar);
       if (url) incoming.channelMeta.avatar = url;
@@ -640,7 +696,7 @@ app.put('/api/chats/:id', (req, res) => {
   incoming.updatedAt = Date.now();
   if (idx >= 0) chats[idx] = incoming;
   else chats.push(incoming);
-  persist();
+  schedulePersist();
 
   const membersChanged = !oldChat || JSON.stringify(oldChat.members || []) !== JSON.stringify(incoming.members || []);
   const nameOrTypeChanged = !oldChat || oldChat.name !== incoming.name || oldChat.type !== incoming.type;
@@ -655,7 +711,7 @@ app.put('/api/chats/:id', (req, res) => {
 app.delete('/api/chats/:id', (req, res) => {
   const id = req.params.id;
   chats = chats.filter(c => c.id !== id);
-  persist();
+  schedulePersist();
   io.emit('chat:deleted', { id });
   res.json({ ok: true });
 });
@@ -684,7 +740,6 @@ app.get('/api/channels/by-login/:login', (req, res) => {
       }
     });
   }
-
   res.json({ ok: true, channel });
 });
 
@@ -718,7 +773,7 @@ app.post('/api/chats/:id/messages/:msgId/view', (req, res) => {
   if (!msg) return res.json({ ok: false });
   msg.views = (msg.views || 0) + 1;
   chat.updatedAt = Date.now();
-  persist();
+  schedulePersist();
   io.emit('message:viewed', { chatId: id, messageId: msgId, views: msg.views });
   res.json({ ok: true, views: msg.views });
 });
@@ -736,11 +791,12 @@ app.post('/api/channels/:id/link-group', (req, res) => {
     if (!group.members.includes(uid)) group.members.push(uid);
   });
   group.commentsForChannel = channelId;
-  persist();
+  schedulePersist();
   io.emit('chat:updated', channel);
   io.emit('chat:updated', group);
   res.json({ ok: true, channel, group });
 });
+
 app.post('/api/channels/:id/unlink-group', (req, res) => {
   const channelId = req.params.id;
   const channel = chats.find(c => c.id === channelId && c.type === 'channel');
@@ -751,7 +807,7 @@ app.post('/api/channels/:id/unlink-group', (req, res) => {
     const oldGroup = chats.find(c => c.id === oldGroupId);
     if (oldGroup) { delete oldGroup.commentsForChannel; io.emit('chat:updated', oldGroup); }
   }
-  persist();
+  schedulePersist();
   io.emit('chat:updated', channel);
   res.json({ ok: true });
 });
@@ -795,11 +851,9 @@ io.on('connection', (socket) => {
             io.to(group.id).emit('message:new', { chatId: group.id, message: fwd });
           }
         }
-        persist();
+        schedulePersist();
       }
     }
-    // io.to — рассылаем всем в комнате, включая отправителя.
-    // Клиент защищён проверкой id, дубликата не будет.
     io.to(chatId).emit('message:new', { chatId, message });
   });
 
@@ -813,7 +867,7 @@ io.on('connection', (socket) => {
         if (action === 'remove') delete msg.reactions[userId];
         else msg.reactions[userId] = emoji;
         chat.updatedAt = Date.now();
-        persist();
+        schedulePersist();
       }
     }
     socket.to(chatId).emit('message:reacted', { chatId, messageId, emoji, userId, action });
@@ -827,7 +881,7 @@ io.on('connection', (socket) => {
       if (msg) {
         if (!msg.readBy) msg.readBy = {};
         msg.readBy[userId] = Date.now();
-        persist();
+        schedulePersist();
       }
     }
     socket.to(chatId).emit('message:read', { chatId, messageId, userId, time: Date.now() });
@@ -841,13 +895,12 @@ io.on('connection', (socket) => {
       if (msg) {
         msg.views = (msg.views || 0) + 1;
         chat.updatedAt = Date.now();
-        persist();
+        schedulePersist();
         socket.to(chatId).emit('message:viewed', { chatId, messageId, views: msg.views });
       }
     }
   });
 
-  // ===== ИНДИКАТОР ПЕЧАТИ =====
   socket.on('typing:start', ({ chatId, userId }) => {
     if (!chatId || !userId) return;
     socket.to(chatId).emit('typing:start', { chatId, userId });
@@ -865,7 +918,7 @@ io.on('connection', (socket) => {
     if (!channel.channelMeta.subscribers.includes(userId)) {
       channel.channelMeta.subscribers.push(userId);
       if (!channel.members.includes(userId)) channel.members.push(userId);
-      persist();
+      schedulePersist();
       io.emit('chat:updated', channel);
     }
   });
@@ -876,7 +929,7 @@ io.on('connection', (socket) => {
     if (channel.channelMeta && channel.channelMeta.subscribers) {
       channel.channelMeta.subscribers = channel.channelMeta.subscribers.filter(u => u !== userId);
       channel.members = channel.members.filter(u => u !== userId);
-      persist();
+      schedulePersist();
       io.emit('chat:updated', channel);
     }
   });
@@ -892,18 +945,23 @@ io.on('connection', (socket) => {
 // ============================================================
 // ЗАПУСК
 // ============================================================
-loadData();
+(async () => {
+  await loadData();
+  startKeepAlive();
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => {
-  log('========================================');
-  log(`  Mzgram server запущен на порту ${PORT}`);
-  log(`  HTML: ${HTML_FILE}`);
-  log(`  Данные: ${DATA_FILE}`);
-  log(`  Медиа: ${MEDIA_DIR}`);
-  log(`  GIF-библиотека: ${GIFS_DIR} (${gifs.length} шт.)`);
-  log('========================================');
-});
+  const PORT = process.env.PORT || 3000;
+  server.listen(PORT, '0.0.0.0', () => {
+    log('========================================');
+    log(`  Mzgram server запущен на порту ${PORT}`);
+    log(`  Хранилище: Supabase`);
+    log(`  HTML: ${HTML_FILE}`);
+    log(`  Медиа: ${MEDIA_DIR}`);
+    log(`  Аккаунтов: ${accounts.length}`);
+    log(`  Чатов: ${chats.length}`);
+    log(`  GIF: ${gifs.length}`);
+    log('========================================');
+  });
+})();
 
-process.on('SIGINT', () => { persist(); saveGifs(gifs); process.exit(0); });
-process.on('SIGTERM', () => { persist(); saveGifs(gifs); process.exit(0); });
+process.on('SIGINT', async () => { await persist(); process.exit(0); });
+process.on('SIGTERM', async () => { await persist(); process.exit(0); });
