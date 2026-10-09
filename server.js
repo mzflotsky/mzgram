@@ -3,8 +3,6 @@
 // Версия для деплоя на Render/Railway с постоянной БД
 // ============================================================
 
-require('dotenv').config();
-
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
