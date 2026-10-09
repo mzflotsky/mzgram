@@ -1,9 +1,14 @@
+node_modules/
 .env
 .env.local
-node_modules/
+.env.*.local
+config.js
+*.log
+npm-debug.log*
+yarn-error.log*
 mzgram.log
 data.json
 server-media/
-*.log
-.env
 .DS_Store
+.idea/
+.vscode/
